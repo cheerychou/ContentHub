@@ -44,6 +44,9 @@ _temp/
 # 安全扫描本地输出
 .mimosa/
 
+# Playwright MCP 浏览器检查产物
+.playwright-mcp/
+
 # Python
 .venv/
 __pycache__/

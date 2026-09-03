@@ -40,7 +40,9 @@ services:
       CH_MINIO_ACCESS_KEY: contenthub
       CH_MINIO_SECRET_KEY: contenthub123
     ports:
-      - "8000:8000"
+      # 宿主机 8000 被无关 Django dev server 占用（2026-09-04），暂以 8001 发布；
+      # 冲突解除后可改回 "8000:8000"。容器网内仍为 api:8000，前端反代不受影响。
+      - "8001:8000"
     depends_on:
       postgres:
         condition: service_healthy
