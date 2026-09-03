@@ -1,4 +1,5 @@
 import pytest
+import sqlalchemy.exc
 
 from app.models import (
     Asset,
@@ -34,6 +35,7 @@ def test_asset_roundtrip(db_session):
     db_session.add(a)
     db_session.flush()
 
+    db_session.expire_all()
     got = db_session.get(Asset, a.id)
     assert got.zone is AssetZone.MASTER
     assert got.status is AssetStatus.DRAFTING
@@ -48,5 +50,5 @@ def test_derivation_pair_unique(db_session):
     db_session.add(Derivation(source_asset_id=m.id, derived_asset_id=p.id))
     db_session.flush()
     db_session.add(Derivation(source_asset_id=m.id, derived_asset_id=p.id))
-    with pytest.raises(Exception):
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
         db_session.flush()

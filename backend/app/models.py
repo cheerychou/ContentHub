@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Enum as SAEnum, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -57,8 +57,12 @@ class Asset(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    zone: Mapped[AssetZone]
-    status: Mapped[AssetStatus]
+    zone: Mapped[AssetZone] = mapped_column(
+        SAEnum(AssetZone, values_callable=lambda e: [m.value for m in e])
+    )
+    status: Mapped[AssetStatus] = mapped_column(
+        SAEnum(AssetStatus, values_callable=lambda e: [m.value for m in e])
+    )
     title: Mapped[str] = mapped_column(String(500))
     file_name: Mapped[str | None] = mapped_column(String(500))
     content_type: Mapped[str] = mapped_column(String(20), default="other")
