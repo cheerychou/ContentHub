@@ -24,6 +24,7 @@ import sys
 import re
 import json
 import argparse
+from datetime import date
 from pathlib import Path
 
 # ---------- 常量 ----------
@@ -33,11 +34,9 @@ EXEMPT_NAMES = {"README.md", ".ai-context.md", "_template.md", "design-spec.md"}
 REQUIRED_FM = ["doc_id", "title", "category", "domain", "status",
                "version", "author", "created_at", "updated_at"]
 DEFAULT_CAT_DIRS = {
-    "FND": "00-foundation", "PRJ": "project", "CRW": "crawlers",
-    "TASK": "tasks", "DATA": "data-cleaning", "DB": "database",
-    "OPS": "ops", "KNW": "knowledge", "STR": "architecture/strategy",
-    "EA": "architecture", "SA": "architecture/technical-architecture",
-    "ENG": "development", "QA": "development/documentation", "PRD": ".",
+    "FND": "00-foundation", "STR": "strategy", "EA": "architecture",
+    "PRD": "product", "ENG": "engineering", "QA": "quality",
+    "OPS": "deployment", "KNW": "knowledge",
 }
 SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = SCRIPT_DIR.parent / "templates"
@@ -108,8 +107,8 @@ def frontmatter_block(doc):
         "status: active\n"
         "version: 1.0\n"
         f"author: {doc.get('author', '团队')}\n"
-        f"created_at: {doc.get('created_at', '2026-06-28')}\n"
-        "updated_at: 2026-06-28\n"
+        f"created_at: {doc.get('created_at', date.today().isoformat())}\n"
+        f"updated_at: {date.today().isoformat()}\n"
         f"tags: [{', '.join(doc.get('tags', []))}]\n"
         "---\n\n"
     )
@@ -235,7 +234,7 @@ def cmd_new(args):
     target = target_dir / name
     doc = {"doc_id": doc_id, "title": args.title or slug, "category": cat,
            "domain": dom, "author": args.author or "团队",
-           "created_at": "2026-06-28", "tags": args.tag or []}
+           "created_at": date.today().isoformat(), "tags": args.tag or []}
     body = frontmatter_block(doc) + f"# {doc['title']}\n\n[正文内容]\n"
     target.write_text(body, encoding="utf-8")
     print(f"{GREEN}✅ 新建{NC} {target.relative_to(docs.parent)}")

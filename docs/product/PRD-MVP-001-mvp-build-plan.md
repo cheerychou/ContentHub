@@ -3,12 +3,12 @@ doc_id: PRD-MVP-001
 title: 数字内容供应链系统(A-DCSC) MVP建设方案
 category: PRD
 domain: MVP
-status: active
+status: draft
 version: 1.0
 doc_type: prd
 author: zhoudabo
 created_at: 2026-09-03
-updated_at: 2026-09-03
+updated_at: 2026-09-04
 tags: [MVP, 三态分离, 血缘, MinIO, OpenMetadata, Neo4j]
 related: [STR-BV-001]
 ---
@@ -16,7 +16,7 @@ related: [STR-BV-001]
 # 数字内容供应链系统（A-DCSC）MVP 建设方案
 
 > **文档状态**：草案，评审中
-> **来源注记**：由独立草稿《MVP建设方案》规范化而来，属 A-DCSC 第一期（MVP，侧重存储与血缘）的落地设一体方案；整体愿景见 [STR-BV-001](../strategy/STR-BV-001-digital-content-supply-chain-vision.md)。
+> **来源注记**：由独立草稿《MVP建设方案》规范化而来，属 A-DCSC 第一期（MVP，侧重存储与血缘）的落地一体化方案；整体愿景见 [STR-BV-001](../strategy/STR-BV-001-digital-content-supply-chain-vision.md)。
 
 ## 1. MVP产品定义与范围
 
@@ -72,7 +72,7 @@ services:
   neo4j:
     image: neo4j:latest
     environment:
-      - NEO4J_AUTH=neo4j/password
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD}   # 密码走 .env，不写死在 compose 里
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -116,10 +116,13 @@ def record_metadata_and_lineage(target_file_info, source_file_info=None):
     # 2. 如果有源资产，在 Neo4j 中建立血缘关系
     if source_file_info:
         with neo4j_driver.session() as session:
+            # MERGE 防止重复建节点；一次 run 只执行一条语句
             session.run(
-                "CREATE (t:Asset {name: $target}) ",
-                "CREATE (s:Asset {name: $source}) ",
-                "CREATE (t)-[:GENERATED_FROM]->(s)",
+                """
+                MERGE (t:Asset {name: $target})
+                MERGE (s:Asset {name: $source})
+                MERGE (t)-[:GENERATED_FROM]->(s)
+                """,
                 target=target_file_info['name'], source=source_file_info['name']
             )
 ```
@@ -165,3 +168,4 @@ RETURN path;
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
 | 1.0 | 2026-09-03 | 将独立草稿《MVP建设方案》规范化为编号文档并入治理 | zhoudabo |
+| 1.1 | 2026-09-04 | 状态改为 draft；修正伪代码 Cypher 用法与 Neo4j 密码配置 | zhoudabo |

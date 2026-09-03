@@ -4,13 +4,13 @@ title: 企业级数字内容供应链系统(A-DCSC) 愿景与项目章程
 category: STR
 domain: BV
 status: active
-version: 1.0
+version: 1.1
 doc_type: charter
 author: zhoudabo
 created_at: 2026-09-03
-updated_at: 2026-09-03
+updated_at: 2026-09-04
 tags: [A-DCSC, vision, charter, content-supply-chain]
-related: [FND-GOV-001]
+related: [FND-GOV-001, PRD-MVP-001]
 ---
 
 # 企业级数字内容供应链系统（A-DCSC）愿景与项目章程
@@ -19,7 +19,7 @@ related: [FND-GOV-001]
 > **创建日期**：2026-09-03
 > **核心议题**：探讨在AIGC时代，企业如何构建一个覆盖内容"存储、制作、管理、分发"全链路的智能系统。
 >
-> **性质声明**：本文档由早期《数字内容供应链系统（讨论纪要）》蒸馏而来，作为现行**愿景与章程**权威出处保存；原始讨论纪要与后续过程性思考见 `docs/archive/`（过程层，不入索引）。
+> **性质声明**：本文档由早期《数字内容供应链系统（讨论纪要）》蒸馏而来，作为现行**愿景与章程**权威出处保存；原始讨论纪要可经 git 历史（初始提交）追溯。
 
 ## 1. 项目背景与讨论缘起
 
@@ -121,16 +121,18 @@ related: [FND-GOV-001]
 
 ## 8. 遗留问题与后续事项
 
-1.  **技术选型**：在确定分期规划后，底层对象存储（如S3/OSS）和向量数据库（如Milvus/Pinecone）该如何选型？（→ 记入决策层/ADR）
-2.  **落地实施**：在没有庞大开发团队的情况下，第一期（MVP）如何利用现有的低代码工具或开源软件快速搭建"三态分离"的血缘库？
-3.  **行业选择**：在当前市场环境下，哪些垂直行业（如零售、制造、教育）对"内容供应链"的付费意愿最为迫切？
+1.  ~~**技术选型**：底层对象存储选型~~ → **已解决**：MVP 采用 MinIO（开源、S3 兼容），见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md) §2.2；向量数据库选型留待三期。
+2.  ~~**落地实施**：MVP 如何用开源软件快速搭建"三态分离"的血缘库~~ → **已解决**：见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md)（Python + MinIO + OpenMetadata + Neo4j 开源链路）。
+3.  **行业选择**：在当前市场环境下，哪些垂直行业（如零售、制造、教育）对"内容供应链"的付费意愿最为迫切？（**待定**，商业化阶段再议）
 
 ## 相关文档
 
-- [FND-GOV-001 编号体系](../00-foundation/governance/FND-GOV-001-numbering-system.md)
+- [FND-GOV-001 文档治理规范](../00-foundation/governance/FND-GOV-001-numbering-system.md)
+- [PRD-MVP-001 MVP建设方案](../product/PRD-MVP-001-mvp-build-plan.md)
 
 ## 变更记录
 
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
 | 1.0 | 2026-09-03 | 由《数字内容供应链系统(讨论纪要)》蒸馏为愿景与章程文档 | zhoudabo |
+| 1.1 | 2026-09-04 | §8 遗留问题与 PRD 对齐（选型/落地已解决）；移除归档目录引用 | zhoudabo |

@@ -14,7 +14,7 @@
 - 校验：`python3 scripts/docstd --docs ./docs check`
 - 重建索引：`python3 scripts/docstd --docs ./docs index`
 
-> 类别词表见 FND-GOV-001 §3；治理模式（全保留·小索引·单一权威 + 分流三问）见 [FND-GOV-003](docs/00-foundation/governance/FND-GOV-003-doc-governance-model.md)。
+> 类别词表、生命周期与治理原则（小索引·单一权威 + 三问）均见 [FND-GOV-001](docs/00-foundation/governance/FND-GOV-001-numbering-system.md)。
 
 ## 提交 / 推送
 

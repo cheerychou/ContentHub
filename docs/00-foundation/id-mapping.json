@@ -7,7 +7,7 @@
     "specification": "FND-GOV-001"
   },
   "_counters": {
-    "FND-GOV": 3,
+    "FND-GOV": 1,
     "FND-TMP": 1,
     "PRD-MVP": 1,
     "STR-BV": 1
@@ -15,27 +15,11 @@
   "documents": [
     {
       "doc_id": "FND-GOV-001",
-      "title": "ContentHub 文档统一编号体系",
+      "title": "ContentHub 文档治理规范",
       "category": "FND",
       "domain": "GOV",
       "status": "active",
       "path": "00-foundation/governance/FND-GOV-001-numbering-system.md"
-    },
-    {
-      "doc_id": "FND-GOV-002",
-      "title": "文档生命周期与归档机制",
-      "category": "FND",
-      "domain": "GOV",
-      "status": "active",
-      "path": "00-foundation/governance/FND-GOV-002-document-lifecycle-and-archiving.md"
-    },
-    {
-      "doc_id": "FND-GOV-003",
-      "title": "文档治理模式:全保留·小索引·单一权威",
-      "category": "FND",
-      "domain": "GOV",
-      "status": "active",
-      "path": "00-foundation/governance/FND-GOV-003-doc-governance-model.md"
     },
     {
       "doc_id": "FND-TMP-001",
@@ -50,7 +34,7 @@
       "title": "数字内容供应链系统(A-DCSC) MVP建设方案",
       "category": "PRD",
       "domain": "MVP",
-      "status": "active",
+      "status": "draft",
       "path": "product/PRD-MVP-001-mvp-build-plan.md"
     },
     {

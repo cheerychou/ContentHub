@@ -14,7 +14,7 @@ related: [FND-GOV-001]
 
 # [文档中文标题]
 
-> 新建文档时复制本文件，按 [FND-GOV-001 编号体系](../governance/FND-GOV-001-numbering-system.md) 命名编号、填写 frontmatter 与正文。
+> 新建文档时复制本文件（或用 `docstd new <CAT> <DOM> <slug>`），按 [FND-GOV-001 文档治理规范](../governance/FND-GOV-001-numbering-system.md) 命名编号、填写 frontmatter 与正文。
 
 ## 文档信息
 
@@ -22,7 +22,7 @@ related: [FND-GOV-001]
 |------|----|
 | 文档编号 | [CAT]-[DOM]-001 |
 | 版本 | V1.0 |
-| 状态 | 草稿 / 评审 / 发布 / 废弃 |
+| 状态 | draft / active / deprecated（见 FND-GOV-001 §5） |
 
 ## 摘要
 
@@ -44,5 +44,4 @@ related: [FND-GOV-001]
 
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
-| V1.0 | 2026-06-28 | 初始版本 | zhoudabo |
-| 1.1 | 2026-09-04 | 项目名更正 ContectHub → ContentHub | zhoudabo |
+| V1.0 | YYYY-MM-DD | 初始版本 | <作者> |
