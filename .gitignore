@@ -40,3 +40,6 @@ docs/.audit/
 *.bak
 *.tmp
 _temp/
+
+# 安全扫描本地输出
+.mimosa/
