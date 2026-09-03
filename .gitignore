@@ -43,3 +43,16 @@ _temp/
 
 # 安全扫描本地输出
 .mimosa/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# 环境与本地输出
+backend/.env
+backend/dup-report.json
