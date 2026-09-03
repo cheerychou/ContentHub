@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Enum as SAEnum, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -73,8 +73,16 @@ class Asset(Base):
     created_by: Mapped[str] = mapped_column(String(100), default="zhoudabo")
     reviewed_by: Mapped[str | None] = mapped_column(String(100))
     meta: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
-    created_at: Mapped[datetime] = mapped_column(default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+    # 时区感知时间列（M1 修正）
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    # 发布登记（M1）：发布后回填
+    published_url: Mapped[str | None] = mapped_column(String(2000))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # 该资产由谁派生而来（上游）
     upstream = relationship(
@@ -114,3 +122,31 @@ class Derivation(Base):
 
     source = relationship("Asset", foreign_keys=[source_asset_id], back_populates="downstream")
     derived = relationship("Asset", foreign_keys=[derived_asset_id], back_populates="upstream")
+
+
+class RecipeKind(str, enum.Enum):
+    COVER_TEMPLATE = "cover_template"  # 封面模板配方
+    TEXT_PROMPT = "text_prompt"        # 文本提示词配方
+
+
+class Recipe(Base):
+    __tablename__ = "recipes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    kind: Mapped[RecipeKind] = mapped_column(
+        SAEnum(RecipeKind, values_callable=lambda e: [m.value for m in e],
+               name="recipekind")
+    )
+    name: Mapped[str] = mapped_column(String(200), unique=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    meta: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    created_by: Mapped[str] = mapped_column(String(100), default="zhoudabo")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

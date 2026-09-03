@@ -6,6 +6,8 @@ from app.models import (
     AssetStatus,
     AssetZone,
     Derivation,
+    Recipe,
+    RecipeKind,
     TRANSITIONS,
 )
 
@@ -52,3 +54,31 @@ def test_derivation_pair_unique(db_session):
     db_session.add(Derivation(source_asset_id=m.id, derived_asset_id=p.id))
     with pytest.raises(sqlalchemy.exc.IntegrityError):
         db_session.flush()
+
+
+def test_recipe_roundtrip_and_unique_name(db_session):
+    r = Recipe(kind=RecipeKind.COVER_TEMPLATE, name="默认封面模板",
+               content="<html>{{ title }}</html>", meta={"platform": "微信公众号"})
+    db_session.add(r)
+    db_session.flush()
+    db_session.expire_all()
+    got = db_session.get(Recipe, r.id)
+    assert got.kind is RecipeKind.COVER_TEMPLATE
+    assert got.meta["platform"] == "微信公众号"
+
+    dup = Recipe(kind=RecipeKind.TEXT_PROMPT, name="默认封面模板", content="x")
+    db_session.add(dup)
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        db_session.flush()
+
+
+def test_publish_info_columns_default_null(db_session):
+    a = Asset(zone=AssetZone.MASTER, status=AssetStatus.DRAFTING,
+              title="t", content_type="markdown")
+    db_session.add(a)
+    db_session.flush()
+    db_session.expire_all()
+    got = db_session.get(Asset, a.id)
+    assert got.published_url is None
+    assert got.published_at is None
+    assert got.created_at.tzinfo is not None  # timestamptz

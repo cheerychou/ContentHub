@@ -74,6 +74,6 @@ def db_session():
     db = factory()
     yield db
     db.rollback()
-    db.execute(text("TRUNCATE assets, derivations CASCADE"))
+    db.execute(text("TRUNCATE assets, derivations, recipes CASCADE"))
     db.commit()
     db.close()
