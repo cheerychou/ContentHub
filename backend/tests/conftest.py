@@ -47,7 +47,8 @@ def _ensure_test_database(url) -> None:
         ).fetchone()
         if not exists:
             try:
-                conn.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
+                # DDL 标识符不支持参数绑定；库名为模块常量，直接写字面量避免动态拼接
+                conn.execute('CREATE DATABASE "contenthub_test"')
             except psycopg.errors.DuplicateDatabase:
                 pass  # 并发竞态：别的会话刚建好
     finally:
