@@ -1,0 +1,37 @@
+#!/bin/bash
+# 项目版 pre-commit hook：对 docs/ 跑 docstd check
+# 接入：bash <doc-standard>/automation/install-hooks.sh
+#
+# 环境变量：
+#   DOCSTD_PATH     显式指定 docstd 路径（覆盖自动探测）
+#   DOCSTD_STRICT=1 开启 --strict（校验 CATEGORY 在已知白名单内）
+set -e
+
+# 定位 docstd：显式 > 本地 scripts/ > skill symlink > PATH
+if [ -n "$DOCSTD_PATH" ]; then
+  DOCSTD="$DOCSTD_PATH"
+elif [ -x "./scripts/docstd" ]; then
+  DOCSTD="./scripts/docstd"
+elif [ -x "$HOME/.claude/skills/doc-standard/scripts/docstd" ]; then
+  DOCSTD="$HOME/.claude/skills/doc-standard/scripts/docstd"
+else
+  DOCSTD="$(command -v docstd || true)"
+fi
+
+if [ -z "$DOCSTD" ]; then
+  cat >&2 <<'EOF'
+❌ 找不到 docstd。任选其一：
+  1) 拷贝到本项目：cp <doc-standard>/scripts/docstd ./scripts/docstd && chmod +x ./scripts/docstd
+  2) 部署 skill（全局）：bash <doc-standard>/install.sh
+  3) 显式指定：DOCSTD_PATH=/path/to/docstd git commit ...
+EOF
+  exit 1
+fi
+
+# 仅当 docs/ 下有 md 改动时才检查（其他提交快速通过）
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '^docs/.*\.md$'; then
+  STRICT=""
+  [ "$DOCSTD_STRICT" = "1" ] && STRICT="--strict"
+  echo "🔍 运行 docstd check docs $STRICT …"
+  python3 "$DOCSTD" --docs ./docs check $STRICT
+fi

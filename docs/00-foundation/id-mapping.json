@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "description": "ContectHub 文档编号映射表 - 记录文档编号、路径与迁移映射",
+    "version": "1.0",
+    "created": "2026-06-28",
+    "updated": "2026-06-28",
+    "specification": "FND-GOV-001"
+  },
+  "_counters": {
+    "FND-GOV": 3,
+    "FND-TMP": 1,
+    "STR-BV": 1
+  },
+  "documents": [
+    {
+      "doc_id": "FND-GOV-001",
+      "title": "ContectHub 文档统一编号体系",
+      "category": "FND",
+      "domain": "GOV",
+      "status": "active",
+      "path": "00-foundation/governance/FND-GOV-001-numbering-system.md"
+    },
+    {
+      "doc_id": "FND-GOV-002",
+      "title": "文档生命周期与归档机制",
+      "category": "FND",
+      "domain": "GOV",
+      "status": "active",
+      "path": "00-foundation/governance/FND-GOV-002-document-lifecycle-and-archiving.md"
+    },
+    {
+      "doc_id": "FND-GOV-003",
+      "title": "文档治理模式:全保留·小索引·单一权威",
+      "category": "FND",
+      "domain": "GOV",
+      "status": "active",
+      "path": "00-foundation/governance/FND-GOV-003-doc-governance-model.md"
+    },
+    {
+      "doc_id": "FND-TMP-001",
+      "title": "ContectHub 标准文档模板",
+      "category": "FND",
+      "domain": "TMP",
+      "status": "active",
+      "path": "00-foundation/templates/FND-TMP-001-document-template.md"
+    },
+    {
+      "doc_id": "STR-BV-001",
+      "title": "企业级数字内容供应链系统(A-DCSC) 愿景与项目章程",
+      "category": "STR",
+      "domain": "BV",
+      "status": "active",
+      "path": "strategy/STR-BV-001-digital-content-supply-chain-vision.md"
+    }
+  ],
+  "migrated": []
+}

@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+docstd —— 文档编号规范 CLI（无第三方依赖）
+
+子命令：
+  init    交互式/参数化初始化项目文档规范（需完整 doc-standard 包的 templates/）
+  check   命名正则 + frontmatter 完整性 + doc_id↔文件名一致性校验
+  index   扫描合规 .md，重建 docs/00-foundation/id-mapping.json
+  next    查某领域（CAT-DOM）下一个可用序号
+  new     分配编号 + 生成 frontmatter 骨架 + 更新索引
+  migrate 按迁移映射 json 批量加 frontmatter + 改名 + 移目录
+
+用法示例：
+  docstd check ./docs                 # 校验目录下所有 md
+  docstd --docs ./docs check          # 等价（--docs 为全局选项，置于子命令前）
+  docstd --docs ./docs index          # 重建索引
+  docstd --docs ./docs next CRW-RCK   # 查下一序号
+  docstd --docs ./docs new CRW RCK feature-x --title "新功能"
+
+规范依据：FND-GOV-001 文档统一编号体系
+"""
+import sys
+import re
+import json
+import argparse
+from pathlib import Path
+
+# ---------- 常量 ----------
+# 命名：CAT-DOM(-子域)*-SEQ-name.md，域支持嵌套（如 DES-DS-MK-004）
+NAME_RE = re.compile(r"^[A-Z]{2,4}(?:-[A-Z]{2,4}){1,}-\d{3}-[a-z0-9][-a-z0-9]*\.md$")
+EXEMPT_NAMES = {"README.md", ".ai-context.md", "_template.md", "design-spec.md"}
+REQUIRED_FM = ["doc_id", "title", "category", "domain", "status",
+               "version", "author", "created_at", "updated_at"]
+DEFAULT_CAT_DIRS = {
+    "FND": "00-foundation", "PRJ": "project", "CRW": "crawlers",
+    "TASK": "tasks", "DATA": "data-cleaning", "DB": "database",
+    "OPS": "ops", "KNW": "knowledge", "STR": "architecture/strategy",
+    "EA": "architecture", "SA": "architecture/technical-architecture",
+    "ENG": "development", "QA": "development/documentation", "PRD": ".",
+}
+SCRIPT_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = SCRIPT_DIR.parent / "templates"
+GREEN, RED, YELLOW, NC = ("\033[0;32m", "\033[0;31m", "\033[0;33m", "\033[0m")
+
+
+# ---------- 工具函数 ----------
+def locate_docs(arg_docs):
+    if arg_docs:
+        return Path(arg_docs).resolve()
+    return (Path.cwd() / "docs").resolve()
+
+
+def is_exempt(path: Path):
+    return path.name in EXEMPT_NAMES or "archive" in path.parts
+
+
+def parse_frontmatter(text):
+    if not text.startswith("---"):
+        return {}
+    end = text.find("\n---", 3)
+    block = text[3:end] if end != -1 else text[3:]
+    fm = {}
+    for line in block.splitlines():
+        if not line.strip() or line[0] in (" ", "-"):
+            continue
+        if ":" in line:
+            k, _, v = line.partition(":")
+            fm[k.strip()] = v.strip().strip('"').strip("'")
+    return fm
+
+
+def collect_md(docs: Path):
+    return sorted(docs.rglob("*.md")) if docs.exists() else []
+
+
+def file_prefix(name: str):
+    """从文件名提取 doc_id（去掉 .md 与末段 slug）。
+
+    以第一个 3 位纯数字段（SEQ）为界：域段均为大写字母、slug 在 SEQ 之后，
+    故首个 3 位数字段必然是 SEQ。例：DES-DS-MK-004-service-sales.md → DES-DS-MK-004
+    """
+    parts = name[:-3].split("-")
+    for i, seg in enumerate(parts):
+        if len(seg) == 3 and seg.isdigit():
+            return "-".join(parts[: i + 1])
+    return name[:-3]
+
+
+def load_mapping(docs: Path):
+    mp = docs / "00-foundation" / "id-mapping.json"
+    if mp.exists():
+        return json.loads(mp.read_text(encoding="utf-8")), mp
+    return {}, mp
+
+
+def derive_categories(mapping):
+    return sorted({k.split("-")[0] for k in mapping.get("_counters", {}) if k})
+
+
+def frontmatter_block(doc):
+    return (
+        "---\n"
+        f"doc_id: {doc['doc_id']}\n"
+        f"title: {doc['title']}\n"
+        f"category: {doc['category']}\n"
+        f"domain: {doc['domain']}\n"
+        "status: active\n"
+        "version: 1.0\n"
+        f"author: {doc.get('author', '团队')}\n"
+        f"created_at: {doc.get('created_at', '2026-06-28')}\n"
+        "updated_at: 2026-06-28\n"
+        f"tags: [{', '.join(doc.get('tags', []))}]\n"
+        "---\n\n"
+    )
+
+
+def gather_files(paths, docs):
+    """从位置参数收集文件：目录则递归 md，文件则直接加入；空则扫 docs"""
+    if not paths:
+        return collect_md(docs)
+    files = []
+    for p in paths:
+        pp = Path(p)
+        if pp.is_dir():
+            files.extend(sorted(pp.rglob("*.md")))
+        elif pp.is_file():
+            files.append(pp.resolve())
+    return files
+
+
+# ---------- 子命令 ----------
+def cmd_check(args):
+    root = locate_docs(args.docs)
+    files = gather_files(args.paths, root)
+    cats = None
+    if args.strict:
+        mapping, _ = load_mapping(root)
+        cats = derive_categories(mapping)
+    checked = passed = 0
+    for f in files:
+        if is_exempt(f):
+            continue
+        checked += 1
+        name, errs = f.name, []
+        if not NAME_RE.match(name):
+            errs.append("命名不符 [CAT]-[DOM(-子域)*]-[SEQ]-name.md")
+        else:
+            if cats is not None and name.split("-")[0] not in cats:
+                errs.append(f"CATEGORY {name.split('-')[0]} 不在白名单 {cats}")
+            fm = parse_frontmatter(f.read_text(encoding="utf-8"))
+            if not fm:
+                errs.append("缺少 frontmatter")
+            else:
+                if fm.get("doc_id") != file_prefix(name):
+                    errs.append(f"doc_id={fm.get('doc_id')} ≠ 文件名前缀 {file_prefix(name)}")
+                missing = [k for k in REQUIRED_FM if not fm.get(k)]
+                if missing:
+                    errs.append(f"frontmatter 缺字段: {missing}")
+        try:
+            disp = f.relative_to(root)
+        except ValueError:
+            disp = f
+        if errs:
+            print(f"{RED}❌ {disp}{NC}")
+            for e in errs:
+                print(f"   - {e}")
+        else:
+            passed += 1
+    if checked == 0:
+        print(f"{YELLOW}（没有需要检查的文档）{NC}")
+        return 0
+    if passed == checked:
+        print(f"{GREEN}✅ {passed}/{checked} 通过{NC}")
+        return 0
+    print(f"{RED}⚠️  {passed}/{checked} 通过，见上方问题{NC}")
+    return 1
+
+
+def cmd_index(args):
+    docs = locate_docs(args.docs)
+    mapping, mp = load_mapping(docs)
+    documents, counters = [], {}
+    for p in collect_md(docs):
+        if not NAME_RE.match(p.name):
+            continue
+        fm = parse_frontmatter(p.read_text(encoding="utf-8"))
+        doc_id = fm.get("doc_id", p.stem)
+        # 计数器 key = 除 SEQ 外的全部段（支持嵌套域：DES-DS-MK-004 → DES-DS-MK）
+        parts = doc_id.split("-")
+        cat_dom = "-".join(parts[:-1])
+        # 记录最大序号而非篇数：编号不回收，有空洞时计数会低于真实最大序号
+        seq = int(parts[-1]) if parts[-1].isdigit() else 0
+        counters[cat_dom] = max(counters.get(cat_dom, 0), seq)
+        documents.append({
+            "doc_id": doc_id, "title": fm.get("title", ""),
+            "category": fm.get("category", ""), "domain": fm.get("domain", ""),
+            "status": fm.get("status", "active"), "path": str(p.relative_to(docs)),
+        })
+    documents.sort(key=lambda d: d["doc_id"])
+    mapping["_counters"] = dict(sorted(counters.items()))
+    mapping["documents"] = documents
+    mapping.setdefault("_meta", {}).setdefault("specification", "FND-GOV-001")
+    mp.parent.mkdir(parents=True, exist_ok=True)
+    mp.write_text(json.dumps(mapping, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"{GREEN}✅ 重建 id-mapping.json{NC}：{len(documents)} 篇，{len(counters)} 个 CAT-DOM")
+    return 0
+
+
+def cmd_next(args):
+    docs = locate_docs(args.docs)
+    mapping, _ = load_mapping(docs)
+    cat_dom = args.cat_dom.upper()
+    cur = mapping.get("_counters", {}).get(cat_dom, 0)
+    print(f"{cat_dom} 下一个可用序号：{cur + 1:03d}（当前 {cur}）")
+    return 0
+
+
+def cmd_new(args):
+    docs = locate_docs(args.docs)
+    cat, dom, slug = args.category.upper(), args.domain.upper(), args.slug
+    mapping, _ = load_mapping(docs)
+    cat_dom = f"{cat}-{dom}"
+    seq = mapping.get("_counters", {}).get(cat_dom, 0) + 1
+    doc_id = f"{cat}-{dom}-{seq:03d}"
+    name = f"{doc_id}-{slug}.md"
+    if args.dir:
+        rel = args.dir
+    elif cat == "FND":
+        rel = "00-foundation/governance" if dom == "GOV" else "00-foundation/templates"
+    else:
+        rel = DEFAULT_CAT_DIRS.get(cat, ".")
+    target_dir = Path(rel) if Path(rel).is_absolute() else docs / rel
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / name
+    doc = {"doc_id": doc_id, "title": args.title or slug, "category": cat,
+           "domain": dom, "author": args.author or "团队",
+           "created_at": "2026-06-28", "tags": args.tag or []}
+    body = frontmatter_block(doc) + f"# {doc['title']}\n\n[正文内容]\n"
+    target.write_text(body, encoding="utf-8")
+    print(f"{GREEN}✅ 新建{NC} {target.relative_to(docs.parent)}")
+    print(f"   doc_id = {doc_id}")
+    cmd_index(args)
+    return 0
+
+
+def cmd_migrate(args):
+    docs = locate_docs(args.docs)
+    data = json.loads(Path(args.map).read_text(encoding="utf-8"))
+    migrations = data if isinstance(data, list) else data.get("migrations", [])
+    print(f"迁移 {len(migrations)} 篇文档…")
+    for m in migrations:
+        src = docs / m["from"]
+        if not src.exists():
+            print(f"{YELLOW}  ⚠️ 缺失：{m['from']}{NC}")
+            continue
+        dst = docs / m["to"]
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        text = src.read_text(encoding="utf-8")
+        if not text.lstrip().startswith("---"):
+            text = frontmatter_block(m) + text
+        dst.write_text(text, encoding="utf-8")
+        src.unlink()
+        print(f"{GREEN}  ✅ {m['doc_id']:<13} {m['from']}{NC}")
+    cmd_index(args)
+    return 0
+
+
+def cmd_init(args):
+    if not TEMPLATES_DIR.exists():
+        print(f"{RED}❌ 找不到 templates/（{TEMPLATES_DIR}）。init 需完整 doc-standard 包。{NC}")
+        return 1
+    name = args.name or input("项目名称（如 caijiqi）：").strip()
+    desc = args.desc or input("项目一句话描述：").strip()
+    author = args.author or input("默认作者：").strip() or "团队"
+    cat_raw = args.categories or input(
+        "CATEGORY 列表，格式 编码:名称:目录，逗号分隔\n"
+        "  例 FND:基础治理:00-foundation,PRJ:项目:project,KNW:知识:knowledge\n  > ").strip()
+    cats = []
+    for item in cat_raw.split(","):
+        parts = [p.strip() for p in item.split(":")]
+        if len(parts) >= 2:
+            code, cname = parts[0], parts[1]
+            cdir = parts[2] if len(parts) > 2 else parts[0].lower()
+            cats.append((code.upper(), cname, cdir))
+    if not cats:
+        print(f"{RED}❌ 未提供有效 CATEGORY{NC}")
+        return 1
+    cat_list = "|".join(c[0] for c in cats)
+    regex = f"^({cat_list})(?:-[A-Z]{{2,4}}){{1,}}-\\d{{3}}-[a-z0-9][-a-z0-9]*\\.md$"
+    cat_table = "| 编码 | 分类 | 目录 |\n|------|------|------|\n" + \
+                "\n".join(f"| {c[0]} | {c[1]} | `{c[2]}/` |" for c in cats)
+    nav_table = "| 分类 | 编码 | 目录 | 文档 |\n|------|------|------|------|\n" + \
+                "\n".join(f"| {c[1]} | {c[0]} | `{c[2]}/` | _待填充_ |" for c in cats)
+    subs = {
+        "{{PROJECT_NAME}}": name, "{{PROJECT_DESC}}": desc, "{{AUTHOR}}": author,
+        "{{DATE}}": "2026-06-28", "{{CATEGORIES_TABLE}}": cat_table,
+        "{{DOMAINS_TABLE}}": "（按需补充 DOMAIN 子领域表，详见 examples/）",
+        "{{NAMING_REGEX}}": regex, "{{CATEGORY_LIST}}": cat_list,
+        "{{NAVIGATION_TABLE}}": nav_table,
+        "{{CORE_CONCEPTS}}": f"- （补充 {name} 的核心业务概念）",
+        "{{MODULE_MAPPING}}": "| （补充模块→文档映射） |",
+        "{{CATEGORY_LIST_WITH_DESC}}": ", ".join(f"{c[0]}({c[1]})" for c in cats),
+    }
+    docs = Path(args.docs).resolve() if args.docs else (Path.cwd() / "docs").resolve()
+    docs.mkdir(parents=True, exist_ok=True)
+
+    def render(tpl, out_rel):
+        text = (TEMPLATES_DIR / tpl).read_text(encoding="utf-8")
+        for k, v in subs.items():
+            text = text.replace(k, v)
+        out = docs / out_rel
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        print(f"{GREEN}  ✅ {out.relative_to(docs.parent)}{NC}")
+
+    print(f"\n初始化 {name} 文档规范 → {docs}")
+    render("numbering-system.md", "00-foundation/governance/FND-GOV-001-numbering-system.md")
+    render("document-template.md", "00-foundation/templates/FND-TMP-001-document-template.md")
+    render("README.md", "README.md")
+    render("ai-context.md", ".ai-context.md")
+    render("id-mapping.seed.json", "00-foundation/id-mapping.json")
+    snippet = (TEMPLATES_DIR / "claude-snippet.md").read_text(encoding="utf-8")
+    for k, v in subs.items():
+        snippet = snippet.replace(k, v)
+    body = snippet.split("\n---\n", 1)[-1]
+    claude = docs.parent / "CLAUDE.md"
+    claude.write_text(f"# {name} 项目约定\n\n**沟通语言：中文。**\n\n{body}", encoding="utf-8")
+    print(f"{GREEN}  ✅ {claude.relative_to(docs.parent)}（片段，可合并到已有 CLAUDE.md）{NC}")
+    cmd_index(args)  # 重建索引，让 _counters 反映刚生成的文档；否则 check --strict 白名单为空
+    print(f"\n{name} 文档规范初始化完成。下一步：填充正文，或用 migrate 迁移既有文档。")
+    return 0
+
+
+# ---------- 入口 ----------
+def main():
+    ap = argparse.ArgumentParser(prog="docstd", description="文档编号规范 CLI")
+    ap.add_argument("--docs", help="docs 目录路径（默认 ./docs），须置于子命令前")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p_check = sub.add_parser("check", help="命名+frontmatter+一致性校验")
+    p_check.add_argument("paths", nargs="*", help="文件或目录，默认 ./docs")
+    p_check.add_argument("--strict", action="store_true", help="校验 CATEGORY 在已知白名单内")
+
+    sub.add_parser("index", help="重建 id-mapping.json")
+
+    p_next = sub.add_parser("next", help="查下一序号")
+    p_next.add_argument("cat_dom", help="形如 CRW-RCK，嵌套域如 DES-DS-MK")
+
+    p_new = sub.add_parser("new", help="新建编号文档")
+    p_new.add_argument("category")
+    p_new.add_argument("domain", help="支持嵌套域，如 DS-MK")
+    p_new.add_argument("slug")
+    p_new.add_argument("--title")
+    p_new.add_argument("--author")
+    p_new.add_argument("--dir")
+    p_new.add_argument("--tag", action="append", default=[])
+
+    p_mig = sub.add_parser("migrate", help="按映射 json 批量迁移")
+    p_mig.add_argument("map", help="迁移映射 json 路径")
+
+    p_init = sub.add_parser("init", help="初始化项目文档规范")
+    p_init.add_argument("--name")
+    p_init.add_argument("--desc")
+    p_init.add_argument("--author")
+    p_init.add_argument("--categories", help="格式 编码:名称:目录,逗号分隔")
+
+    args = ap.parse_args()
+    dispatch = {"check": cmd_check, "index": cmd_index, "next": cmd_next,
+                "new": cmd_new, "migrate": cmd_migrate, "init": cmd_init}
+    return dispatch[args.cmd](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
