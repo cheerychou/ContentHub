@@ -9,6 +9,7 @@
   "_counters": {
     "FND-GOV": 3,
     "FND-TMP": 1,
+    "PRD-MVP": 1,
     "STR-BV": 1
   },
   "documents": [
@@ -43,6 +44,14 @@
       "domain": "TMP",
       "status": "active",
       "path": "00-foundation/templates/FND-TMP-001-document-template.md"
+    },
+    {
+      "doc_id": "PRD-MVP-001",
+      "title": "数字内容供应链系统(A-DCSC) MVP建设方案",
+      "category": "PRD",
+      "domain": "MVP",
+      "status": "active",
+      "path": "product/PRD-MVP-001-mvp-build-plan.md"
     },
     {
       "doc_id": "STR-BV-001",

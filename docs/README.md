@@ -30,8 +30,13 @@ updated_at: "2026-09-03"
 |------|------|
 | [愿景与项目章程](strategy/STR-BV-001-digital-content-supply-chain-vision.md) | A-DCSC 定义、三态分离、架构、路线（起点） |
 
----
+### 📦 产品需求 `product/`
 
+| 文档 | 说明 |
+|------|------|
+| [MVP建设方案](product/PRD-MVP-001-mvp-build-plan.md) | A-DCSC 一期(MVP)范围/技术选型/实现(三态+血缘) |
+
+---
 > 🗄️ 过程层归档在 `docs/archive/`（不入导航与索引，见 GOV-003）。类别词表见 FND-GOV-001 §3/§4。
 
 ## 文档规范
