@@ -66,6 +66,67 @@ def test_link_source_to_publish_rejected(client):
     assert resp.status_code == 422
 
 
+def _make_publish(client, master, title="公众号版"):
+    resp = client.post(
+        f"/api/assets/{master['id']}/derive",
+        data={"title": title, "platform": "微信公众号"},
+        files={"file": ("p.md", b"x", "text/markdown")},
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+def test_link_source_to_master_allowed(client):
+    src = _make(client, zone="source", title="信源")
+    master = _make(client, title="母版")
+    resp = client.post(
+        f"/api/assets/{master['id']}/derivations",
+        json={
+            "source_asset_id": src["id"],
+            "recipe_ref": "提示词:v2.2",
+            "note": "测试",
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["source_asset_id"] == src["id"]
+    assert body["derived_asset_id"] == master["id"]
+    assert body["recipe_ref"] == "提示词:v2.2"
+    assert body["note"] == "测试"
+
+
+def test_link_master_to_master_allowed(client):
+    m1 = _make(client, title="母版A")
+    m2 = _make(client, title="母版B")
+    resp = client.post(
+        f"/api/assets/{m2['id']}/derivations",
+        json={"source_asset_id": m1["id"]},
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["source_asset_id"] == m1["id"]
+    assert body["derived_asset_id"] == m2["id"]
+
+
+def test_link_from_publish_rejected(client):
+    master = _make(client, title="母版")
+    pub = _make_publish(client, master)
+    # publish → master 禁止（PUBLISH 资产不可作为任何派生的上游）
+    other_master = _make(client, title="母版2")
+    resp = client.post(
+        f"/api/assets/{other_master['id']}/derivations",
+        json={"source_asset_id": pub["id"]},
+    )
+    assert resp.status_code == 422
+    # publish → publish 禁止
+    pub2 = _make_publish(client, master, title="视频号版")
+    resp = client.post(
+        f"/api/assets/{pub2['id']}/derivations",
+        json={"source_asset_id": pub["id"]},
+    )
+    assert resp.status_code == 422
+
+
 def test_link_duplicate_relation_conflict(client):
     master = _make(client, title="母版")
     pub = client.post(

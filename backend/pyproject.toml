@@ -30,3 +30,9 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # fastapi.testclient 重导出 starlette.testclient 时的三方弃用告警（非项目代码）
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+    # starlette.testclient 模块级 anyio 别名弃用告警（非项目代码）
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
