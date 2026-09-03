@@ -94,7 +94,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str = (
-        "postgresql+psycopg://contenthub:contenthub@localhost:5432/contenthub"
+        "postgresql+psycopg://contenthub:contenthub@localhost:5433/contenthub"
     )
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "contenthub"
@@ -159,7 +159,7 @@ services:
       POSTGRES_PASSWORD: contenthub
       POSTGRES_DB: contenthub
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
