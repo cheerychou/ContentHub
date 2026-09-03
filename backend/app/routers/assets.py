@@ -7,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Asset, AssetStatus, AssetZone, TRANSITIONS
+from ..models import Asset, AssetStatus, AssetZone, Derivation, TRANSITIONS
 from ..schemas import (
     AssetDetail,
     AssetExternalCreate,
     AssetOut,
+    DerivationCreate,
     DerivationOut,
     StatusUpdate,
 )
@@ -172,3 +173,80 @@ def delete_asset(asset_id: uuid.UUID, db: Session = Depends(get_db),
         storage.delete(asset.zone.value, asset.object_key)
     db.delete(asset)
     db.commit()
+
+
+ALLOWED_DERIVATION_ZONES = {
+    (AssetZone.SOURCE, AssetZone.MASTER),
+    (AssetZone.MASTER, AssetZone.MASTER),
+    (AssetZone.MASTER, AssetZone.PUBLISH),
+}
+
+
+@router.post("/{master_id}/derive", status_code=201, response_model=AssetDetail)
+async def derive_from_master(
+    master_id: uuid.UUID,
+    title: str = Form(...),
+    platform: str = Form(...),
+    file: UploadFile = File(...),
+    recipe_ref: str | None = Form(None),
+    db: Session = Depends(get_db),
+    storage=Depends(get_storage),
+):
+    master = get_asset_or_404(db, master_id)
+    if master.zone != AssetZone.MASTER:
+        raise HTTPException(422, f"仅母版可派生，当前 zone={master.zone.value}")
+
+    file_name = file.filename or "untitled"
+    ct = content_type_for(file_name)
+    pub = Asset(
+        zone=AssetZone.PUBLISH,
+        status=AssetStatus.PUBLISHING,
+        title=title,
+        file_name=file_name,
+        content_type=ct,
+        created_by=master.created_by,
+        meta={"platform": platform},
+    )
+    db.add(pub)
+    db.flush()
+    key = f"{pub.id}/{file_name}"
+    data = await file.read()
+    storage.put(AssetZone.PUBLISH, key, data, file.content_type or "application/octet-stream")
+    pub.object_key = key
+    if ct == "markdown":
+        pub.text_content = data.decode("utf-8", errors="ignore")
+
+    db.add(Derivation(source_asset_id=master.id, derived_asset_id=pub.id,
+                      recipe_ref=recipe_ref, created_by=master.created_by))
+    db.commit()
+    db.refresh(pub)
+    detail = AssetDetail.model_validate(pub)
+    detail.upstream = [DerivationOut.model_validate(d) for d in pub.upstream]
+    return detail
+
+
+@router.post("/{asset_id}/derivations", status_code=201, response_model=DerivationOut)
+def link_derivation(asset_id: uuid.UUID, body: DerivationCreate,
+                    db: Session = Depends(get_db)):
+    derived = get_asset_or_404(db, asset_id)
+    source = get_asset_or_404(db, body.source_asset_id)
+    if (source.zone, derived.zone) not in ALLOWED_DERIVATION_ZONES:
+        raise HTTPException(
+            422,
+            f"派生区规则禁止 {source.zone.value} → {derived.zone.value}"
+            "（发布态必须派生自母版）",
+        )
+    exists = db.scalar(
+        select(Derivation).where(
+            Derivation.source_asset_id == source.id,
+            Derivation.derived_asset_id == derived.id,
+        )
+    )
+    if exists:
+        raise HTTPException(409, "派生关系已存在")
+    d = Derivation(source_asset_id=source.id, derived_asset_id=derived.id,
+                   recipe_ref=body.recipe_ref, note=body.note)
+    db.add(d)
+    db.commit()
+    db.refresh(d)
+    return d
