@@ -4,7 +4,7 @@ title: 文档生命周期与归档机制
 category: FND
 domain: GOV
 status: active
-version: 1.0
+version: 1.1
 doc_type: governance
 author: zhoudabo
 created_at: 2026-06-28
@@ -17,7 +17,7 @@ related: [FND-GOV-001]
 
 ## 1. 目的与范围
 
-定义 ContectHub 项目 `docs/` 目录下文档的生命周期管理规则，解决：
+定义 ContentHub 项目 `docs/` 目录下文档的生命周期管理规则，解决：
 
 - 文档与实现/事实脱节时，谁为准。
 - 文档不再适用时如何**废弃但仍可追溯**。
@@ -99,3 +99,4 @@ python3 scripts/docstd --docs ./docs index
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
 | 1.0 | 2026-06-28 | 初始版本 | zhoudabo |
+| 1.1 | 2026-09-04 | 项目名更正 ContectHub → ContentHub | zhoudabo |

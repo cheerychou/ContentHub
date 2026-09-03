@@ -1,4 +1,4 @@
-# ContectHub
+# ContentHub
 
 面向企业/平台的 **AI-Native 数字内容供应链系统（A-DCSC）** —— 内容"存储、制作、管理、分发"全链路。
 

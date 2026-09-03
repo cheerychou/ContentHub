@@ -4,7 +4,7 @@ title: 文档治理模式:全保留·小索引·单一权威
 category: FND
 domain: GOV
 status: active
-version: 1.0
+version: 1.1
 doc_type: governance
 author: zhoudabo
 created_at: 2026-06-28
@@ -15,7 +15,7 @@ related: [FND-GOV-001, FND-GOV-002]
 
 # 文档治理模式：全保留 · 小索引 · 单一权威
 
-> 本文档借鉴成熟工程实践（docs-as-code、Diátaxis、ADR、SPOT），为 ContectHub 定义一套**从出生即分流**的文档治理立场，避免项目文档随增长而膨胀、重复、冲突。
+> 本文档借鉴成熟工程实践（docs-as-code、Diátaxis、ADR、SPOT），为 ContentHub 定义一套**从出生即分流**的文档治理立场，避免项目文档随增长而膨胀、重复、冲突。
 
 ## 1. 背景：文档为什么需要治理
 
@@ -74,3 +74,4 @@ related: [FND-GOV-001, FND-GOV-002]
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
 | 1.0 | 2026-06-28 | 初始版本 | zhoudabo |
+| 1.1 | 2026-09-04 | 项目名更正 ContectHub → ContentHub | zhoudabo |

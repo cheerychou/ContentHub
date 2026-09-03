@@ -1,9 +1,9 @@
 {
   "_meta": {
-    "description": "ContectHub 文档编号映射表 - 记录文档编号、路径与迁移映射",
+    "description": "ContentHub 文档编号映射表 - 记录文档编号、路径与迁移映射",
     "version": "1.0",
     "created": "2026-06-28",
-    "updated": "2026-06-28",
+    "updated": "2026-09-04",
     "specification": "FND-GOV-001"
   },
   "_counters": {
@@ -15,7 +15,7 @@
   "documents": [
     {
       "doc_id": "FND-GOV-001",
-      "title": "ContectHub 文档统一编号体系",
+      "title": "ContentHub 文档统一编号体系",
       "category": "FND",
       "domain": "GOV",
       "status": "active",
@@ -39,7 +39,7 @@
     },
     {
       "doc_id": "FND-TMP-001",
-      "title": "ContectHub 标准文档模板",
+      "title": "ContentHub 标准文档模板",
       "category": "FND",
       "domain": "TMP",
       "status": "active",

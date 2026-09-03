@@ -1,4 +1,4 @@
-# ContectHub 项目约定
+# ContentHub 项目约定
 
 **沟通语言：中文。**
 

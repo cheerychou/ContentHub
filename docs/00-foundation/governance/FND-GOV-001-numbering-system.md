@@ -1,24 +1,24 @@
 ---
 doc_id: FND-GOV-001
-title: "ContectHub 文档统一编号体系"
+title: "ContentHub 文档统一编号体系"
 category: FND
 domain: GOV
 status: active
-version: 1.0
+version: 1.1
 doc_type: governance
 author: "zhoudabo"
 created_at: "2026-06-28"
-updated_at: "2026-06-28"
+updated_at: "2026-09-04"
 tags: [governance, numbering, standard]
 related: [FND-TMP-001, FND-GOV-002, FND-GOV-003]
 ---
 
-# ContectHub 文档统一编号体系
+# ContentHub 文档统一编号体系
 
 ## 1. 概述
 
 ### 1.1 目的
-定义 ContectHub（面向企业/平台的 AI-Native 数字内容供应链系统(A-DCSC):内容存储/制作/管理/分发全链路）项目文档的统一编号体系，使每篇文档从文件名即可判断分类与领域，并支持自动化索引与校验。
+定义 ContentHub（面向企业/平台的 AI-Native 数字内容供应链系统(A-DCSC):内容存储/制作/管理/分发全链路）项目文档的统一编号体系，使每篇文档从文件名即可判断分类与领域，并支持自动化索引与校验。
 
 ### 1.2 适用范围
 适用于 `docs/` 目录下所有 Markdown 文档。新文档必须使用本体系。
@@ -47,7 +47,7 @@ related: [FND-TMP-001, FND-GOV-002, FND-GOV-003]
 
 ## 3. 分类编码（CATEGORY）
 
-> 本项目词表，根据 ContectHub 业务定制。
+> 本项目词表，根据 ContentHub 业务定制。
 
 | 编码 | 分类 | 目录 |
 |------|------|------|
@@ -126,3 +126,4 @@ CATEGORY 白名单：`FND|STR|EA|PRD|ENG|QA|OPS|KNW`
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
 | 1.0 | 2026-06-28 | 初始版本 | zhoudabo |
+| 1.1 | 2026-09-04 | 项目名更正 ContectHub → ContentHub | zhoudabo |

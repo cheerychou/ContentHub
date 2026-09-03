@@ -1,12 +1,12 @@
 ---
-title: "ContectHub 文档中心"
+title: "ContentHub 文档中心"
 category: index
 status: active
-version: 1.0
-updated_at: "2026-09-03"
+version: 1.1
+updated_at: "2026-09-04"
 ---
 
-# ContectHub 文档中心
+# ContentHub 文档中心
 
 > 面向企业/平台的 AI-Native 数字内容供应链系统（A-DCSC）：内容"存储、制作、管理、分发"全链路。
 > 文档编号体系见 [FND-GOV-001](./00-foundation/governance/FND-GOV-001-numbering-system.md)。

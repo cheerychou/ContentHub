@@ -1,13 +1,13 @@
 ---
 doc_id: FND-TMP-001
-title: "ContectHub 标准文档模板"
+title: "ContentHub 标准文档模板"
 category: FND
 domain: TMP
 status: active
-version: 1.0
+version: 1.1
 author: "zhoudabo"
 created_at: "2026-06-28"
-updated_at: "2026-06-28"
+updated_at: "2026-09-04"
 tags: [template]
 related: [FND-GOV-001]
 ---
@@ -45,3 +45,4 @@ related: [FND-GOV-001]
 | 版本 | 日期 | 变更 | 更新人 |
 |------|------|------|--------|
 | V1.0 | 2026-06-28 | 初始版本 | zhoudabo |
+| 1.1 | 2026-09-04 | 项目名更正 ContectHub → ContentHub | zhoudabo |
