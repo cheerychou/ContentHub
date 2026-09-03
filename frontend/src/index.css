@@ -1,0 +1,31 @@
+:root {
+  font-family: system-ui, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 1.5;
+  color: #1f2328;
+  background: #fff;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #d0d7de;
+    background: #16171d;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  margin-right: 4px;
+}
+
+table td,
+table th {
+  padding: 6px 8px;
+  vertical-align: top;
+}
