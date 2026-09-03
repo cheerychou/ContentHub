@@ -35,6 +35,11 @@ export default function App() {
     }
   }, [zone, q]);
 
+  // 统一捕获变更类操作的异常，避免 unhandled rejection 静默失败
+  const run = useCallback(async (fn: () => Promise<void>) => {
+    try { setError(""); await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, []);
+
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     if (!detail) return;
@@ -64,11 +69,11 @@ export default function App() {
         </select>
         <input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
         <input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
-        <button onClick={async () => {
+        <button onClick={() => void run(async () => {
           if (!upFile || !upTitle) return;
           await uploadAsset(upZone, upTitle, upFile);
           setUpTitle(""); setUpFile(null); void refresh();
-        }}>上传</button>
+        })}>上传</button>
       </section>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -80,7 +85,9 @@ export default function App() {
         </thead>
         <tbody>
           {assets.map((a) => (
-            <tr key={a.id} onClick={() => void getAsset(a.id).then(setDetail)}
+            <tr key={a.id} onClick={() => void run(async () => {
+              setDetail(await getAsset(a.id));
+            })}
                 style={{ cursor: "pointer", borderTop: "1px solid #eee" }}>
               <td>{a.title}</td>
               <td>{ZONE_LABELS[a.zone]}</td>
@@ -103,10 +110,10 @@ export default function App() {
           <div>
             状态流转：
             {TRANSITIONS[detail.status].map((s) => (
-              <button key={s} onClick={async () => {
+              <button key={s} onClick={() => void run(async () => {
                 await patchStatus(detail.id, s);
                 setDetail(await getAsset(detail.id)); void refresh();
-              }}>{STATUS_LABELS[s]}</button>
+              })}>{STATUS_LABELS[s]}</button>
             ))}
           </div>
 
@@ -120,12 +127,12 @@ export default function App() {
               <input placeholder="发布物标题" value={dvTitle}
                      onChange={(e) => setDvTitle(e.target.value)} />
               <input type="file" onChange={(e) => setDvFile(e.target.files?.[0] ?? null)} />
-              <button onClick={async () => {
+              <button onClick={() => void run(async () => {
                 if (!dvFile || !dvTitle) return;
                 await derive(detail.id, dvTitle, dvPlatform, dvFile);
                 setDvTitle(""); setDvFile(null);
                 setDetail(await getAsset(detail.id)); void refresh();
-              }}>派生</button>
+              })}>派生</button>
             </div>
           )}
 
@@ -135,15 +142,15 @@ export default function App() {
             <p>下游：{detail.downstream.map((d) => d.derived_asset_id).join("、") || "无"}</p>
             <input placeholder="补链：上游资产 UUID" value={linkSource}
                    onChange={(e) => setLinkSource(e.target.value)} />
-            <button onClick={async () => {
+            <button onClick={() => void run(async () => {
               await linkDerivation(detail.id, linkSource);
               setLinkSource(""); setDetail(await getAsset(detail.id));
-            }}>补链</button>
+            })}>补链</button>
           </div>
 
-          <button style={{ marginTop: 8 }} onClick={async () => {
+          <button style={{ marginTop: 8 }} onClick={() => void run(async () => {
             await deleteAsset(detail.id); setDetail(null); void refresh();
-          }}>删除资产</button>
+          })}>删除资产</button>
         </section>
       )}
     </main>
