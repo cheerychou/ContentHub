@@ -41,6 +41,32 @@ def content_type_for(file_name: str) -> str:
     return EXT_CONTENT_TYPE.get(suffix, "other")
 
 
+async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
+                       content_type: str) -> str | None:
+    """小文件入内存并返回文本（仅 markdown）；大文件 spool 流式；超 2GB 拒绝。
+
+    UploadFile 已在磁盘 spill：读头部判定大小，小文件进内存并抽文本，
+    大文件 spool 流式上传。返回抽取的文本（markdown），其余返回 None；
+    超 2GB 抛 413（调用方须 rollback 后 re-raise）。
+    """
+    data = await file.read(INLINE_TEXT_LIMIT + 1)
+    if len(data) <= INLINE_TEXT_LIMIT:
+        storage.put(zone, key, data, file.content_type or "application/octet-stream")
+        if content_type == "markdown":
+            return data.decode("utf-8", errors="ignore")
+        return None
+    with tempfile.SpooledTemporaryFile(max_size=64 * 1024 * 1024) as tmp:
+        tmp.write(data)
+        shutil.copyfileobj(file.file, tmp)
+        size = tmp.tell()
+        if size > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"文件超过上限 {MAX_UPLOAD_BYTES} 字节")
+        tmp.seek(0)
+        storage.put_stream(zone, key, tmp, size,
+                           file.content_type or "application/octet-stream")
+    return None
+
+
 def get_asset_or_404(db: Session, asset_id: uuid.UUID) -> Asset:
     asset = db.get(Asset, asset_id)
     if asset is None:
@@ -74,24 +100,11 @@ async def create_asset(
     db.add(asset)
     db.flush()
     key = f"{asset.id}/{file_name}"
-
-    # UploadFile 已在磁盘 spill；读头部判定大小，小文件进内存并抽文本，大文件流式
-    data = await file.read(INLINE_TEXT_LIMIT + 1)
-    if len(data) <= INLINE_TEXT_LIMIT:
-        storage.put(zone, key, data, file.content_type or "application/octet-stream")
-        if ct == "markdown":
-            asset.text_content = data.decode("utf-8", errors="ignore")
-    else:
-        with tempfile.SpooledTemporaryFile(max_size=64 * 1024 * 1024) as tmp:
-            tmp.write(data)
-            shutil.copyfileobj(file.file, tmp)
-            size = tmp.tell()
-            if size > MAX_UPLOAD_BYTES:
-                db.rollback()
-                raise HTTPException(413, f"文件超过上限 {MAX_UPLOAD_BYTES} 字节")
-            tmp.seek(0)
-            storage.put_stream(zone, key, tmp, size,
-                               file.content_type or "application/octet-stream")
+    try:
+        asset.text_content = await store_upload(storage, zone, key, file, ct)
+    except HTTPException:
+        db.rollback()
+        raise
     asset.object_key = key
     db.commit()
     db.refresh(asset)
@@ -210,11 +223,13 @@ async def derive_from_master(
     db.add(pub)
     db.flush()
     key = f"{pub.id}/{file_name}"
-    data = await file.read()
-    storage.put(AssetZone.PUBLISH, key, data, file.content_type or "application/octet-stream")
+    try:
+        pub.text_content = await store_upload(
+            storage, AssetZone.PUBLISH, key, file, ct)
+    except HTTPException:
+        db.rollback()
+        raise
     pub.object_key = key
-    if ct == "markdown":
-        pub.text_content = data.decode("utf-8", errors="ignore")
 
     db.add(Derivation(source_asset_id=master.id, derived_asset_id=pub.id,
                       recipe_ref=recipe_ref, created_by=master.created_by))

@@ -1,10 +1,7 @@
-import io
-
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
 
-from app.db import Base, engine, get_db
+from app.db import get_db
 from app.main import app
 from app.storage import FakeStorage, get_storage
 

@@ -70,7 +70,6 @@ def test_duplicate_report_groups_same_topic(db_session, tmp_path):
     groups = duplicate_report(db_session)
     assert groups, "应检出至少一组同题疑似副本"
     all_ids = {i for g in groups for i in g["ids"]}
-    n = db_session.query(Asset).filter(Asset.source_path.like("公众号文章草稿/2026年%售后%")).count()
     assert len(all_ids & {
         str(a.id) for a in db_session.query(Asset).filter(Asset.source_path.like("公众号文章草稿/2026年%售后%"))
     }) >= 2
