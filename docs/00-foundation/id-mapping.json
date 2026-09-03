@@ -9,6 +9,7 @@
   "_counters": {
     "FND-GOV": 1,
     "FND-TMP": 1,
+    "KNW-EXP": 1,
     "PRD-MVP": 1,
     "STR-BV": 1
   },
@@ -30,11 +31,19 @@
       "path": "00-foundation/templates/FND-TMP-001-document-template.md"
     },
     {
+      "doc_id": "KNW-EXP-001",
+      "title": "内容生产自动化经验册（VidFlow 等项目蒸馏）",
+      "category": "KNW",
+      "domain": "EXP",
+      "status": "active",
+      "path": "knowledge/KNW-EXP-001-content-supply-chain-lessons.md"
+    },
+    {
       "doc_id": "PRD-MVP-001",
       "title": "数字内容供应链系统(A-DCSC) MVP建设方案",
       "category": "PRD",
       "domain": "MVP",
-      "status": "draft",
+      "status": "active",
       "path": "product/PRD-MVP-001-mvp-build-plan.md"
     },
     {

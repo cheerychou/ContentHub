@@ -4,7 +4,7 @@
 
 ## 项目一句话
 
-面向企业/平台的 **AI-Native 数字内容供应链系统（A-DCSC）**：内容 存储→制作→管理→分发 全链路。全貌见 [STR-BV-001 愿景与章程](docs/strategy/STR-BV-001-digital-content-supply-chain-vision.md)。
+面向企业/平台的 **AI-Native 数字内容供应链系统（A-DCSC）**：内容 存储→制作→管理→分发 全链路。产品定位（2026-09-04 定稿）：自有场景（车嘀嗒内容营销）先行 → CDD3 生态对接 → 独立 SaaS。全貌见 [STR-BV-001 愿景与章程](docs/strategy/STR-BV-001-digital-content-supply-chain-vision.md)，建设方案见 [PRD-MVP-001](docs/product/PRD-MVP-001-mvp-build-plan.md)。
 
 ## 文档规范（重要）
 
@@ -26,7 +26,7 @@
 - [ ] **写新文档先分配编号**：`python3 scripts/docstd --docs ./docs new <CAT> <DOM> <slug> --title "中文标题"`，或查 `id-mapping.json` / `docstd next`。
 - [ ] **先查后写**：搜索是否已有可复用实现 / 权威文档，避免重复。
 - [ ] **文档加完整 frontmatter**，正文结尾更新「变更记录」表与 frontmatter `version`。
-- [ ] **开发前读经验教训册**：`docs/knowledge/KNW-EXP-*`（若有）。
+- [ ] **开发前读经验教训册**：`docs/knowledge/KNW-EXP-*`——涉内容自动化（字幕/发布/封面/交付形态）必读 [KNW-EXP-001](docs/knowledge/KNW-EXP-001-content-supply-chain-lessons.md)。
 
 ## 根目录卫生 & 过程文档
 

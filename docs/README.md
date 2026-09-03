@@ -26,13 +26,19 @@ updated_at: "2026-09-04"
 
 | 文档 | 说明 |
 |------|------|
-| [愿景与项目章程](strategy/STR-BV-001-digital-content-supply-chain-vision.md) | A-DCSC 定义、三态分离、架构、路线（起点） |
+| [愿景与项目章程](strategy/STR-BV-001-digital-content-supply-chain-vision.md) | A-DCSC 定义、三态分离、产品定位（§8）、路线（起点） |
 
 ### 📦 产品需求 `product/`
 
 | 文档 | 说明 |
 |------|------|
-| [MVP建设方案](product/PRD-MVP-001-mvp-build-plan.md)（draft） | A-DCSC 一期(MVP)范围/技术选型/实现(三态+血缘) |
+| [MVP建设方案](product/PRD-MVP-001-mvp-build-plan.md) | v2.0 定位定稿重写：配方派生引擎优先，Web 自托管（M0-M2） |
+
+### 🧠 知识经验 `knowledge/`
+
+| 文档 | 说明 |
+|------|------|
+| [内容生产自动化经验册](knowledge/KNW-EXP-001-content-supply-chain-lessons.md) | VidFlow 等项目蒸馏的自动化边界教训（字幕/发布/封面/形态） |
 
 ---
 
