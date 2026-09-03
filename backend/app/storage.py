@@ -58,7 +58,13 @@ class FakeStorage:
         self.objects[(zone, key)] = data
     def put_stream(self, zone: str, key: str, fileobj, length: int,
                    content_type: str) -> None:
-        self.objects[(zone, key)] = fileobj.read()
+        data = fileobj.read()
+        if len(data) != length:
+            raise ValueError(
+                f"put_stream length mismatch for {zone}/{key}: "
+                f"expected {length} bytes, got {len(data)}"
+            )
+        self.objects[(zone, key)] = data
     def get(self, zone: str, key: str) -> bytes | None:
         return self.objects.get((zone, key))
     def presigned_get(self, zone: str, key: str, expires_seconds: int = 3600) -> str:
