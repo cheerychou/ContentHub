@@ -2,11 +2,24 @@
 
 面向企业/平台的 **AI-Native 数字内容供应链系统（A-DCSC）** —— 内容"存储、制作、管理、分发"全链路。
 
-> ⚠️ 本仓库处于**方案/草案起步阶段**：当前主体是项目文档（愿景与章程、文档治理体系），工程代码待业务定型后落地。
+> ⚠️ 本仓库处于**方案/草案起步阶段**：M0 资产底座已可自托管运行，后续工程能力待业务定型后逐步落地。
 
 ## 📚 文档
 
 进入 [docs/README.md](docs/README.md) 文档中心；全套文档采用统一编号体系见 [FND-GOV-001](docs/00-foundation/governance/FND-GOV-001-numbering-system.md)。
+
+## 快速开始（应用）
+
+```bash
+make up                 # postgres + minio + api + frontend
+open http://localhost:8080
+# 导入既有 Obsidian 内容库
+make import VAULT="/path/to/【008】个人文章"
+```
+
+> 注：compose 将 api 映射到宿主机 **8001**（本机 8000 已被占用，见 `docker-compose.yml`）；前端 8080、minio 9000、postgres 5433。
+
+开发：`make dev`（仅起 postgres/minio）→ `cd backend && .venv/bin/pytest -v`。
 
 ## 快速开始（文档规范）
 
