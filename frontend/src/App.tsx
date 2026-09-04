@@ -243,13 +243,11 @@ function Assets() {
                 setDtTitle(""); setDtInstructions("");
                 setDetail(await getAsset(detail.id)); void refresh();
               })}>生成变体</button>
-              <p style={{ color: "#888", fontSize: 12 }}>
-                提示：未配置 CH_LLM_API_KEY 时无法生成，请先在服务端配置。
-              </p>
             </div>
           )}
 
-          <div style={{ marginTop: 8 }}>
+          {detail.zone === "publish" && (
+            <div style={{ marginTop: 8 }}>
             <h3>发布登记</h3>
             {detail.published_url ? (
               <p>
@@ -279,7 +277,8 @@ function Assets() {
                 setPubUrl(""); setDetail(await getAsset(detail.id)); void refresh();
               })}>清除</button>
             )}
-          </div>
+            </div>
+          )}
 
           <div style={{ marginTop: 8 }}>
             <h3>血缘</h3>
