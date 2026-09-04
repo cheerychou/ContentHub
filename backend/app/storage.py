@@ -13,6 +13,7 @@ class ObjectStorage(Protocol):
     def ensure_buckets(self) -> None: ...
     def put(self, zone: str, key: str, data: bytes, content_type: str) -> None: ...
     def put_stream(self, zone: str, key: str, fileobj, length: int, content_type: str) -> None: ...
+    def get_bytes(self, zone: str, key: str) -> bytes: ...
     def presigned_get(self, zone: str, key: str, expires_seconds: int = 3600) -> str: ...
     def delete(self, zone: str, key: str) -> None: ...
 
@@ -37,6 +38,14 @@ class MinioStorage:
                    content_type: str) -> None:
         self.client.put_object(self.buckets[zone], key, fileobj,
                                length=length, content_type=content_type)
+
+    def get_bytes(self, zone: str, key: str) -> bytes:
+        resp = self.client.get_object(self.buckets[zone], key)
+        try:
+            return resp.read()
+        finally:
+            resp.close()
+            resp.release_conn()
 
     def presigned_get(self, zone: str, key: str, expires_seconds: int = 3600) -> str:
         from datetime import timedelta
@@ -68,6 +77,8 @@ class FakeStorage:
         self.objects[(zone, key)] = data
     def get(self, zone: str, key: str) -> bytes | None:
         return self.objects.get((zone, key))
+    def get_bytes(self, zone: str, key: str) -> bytes:
+        return self.objects[(zone, key)]
     def presigned_get(self, zone: str, key: str, expires_seconds: int = 3600) -> str:
         return f"fake://{zone}/{key}"
     def delete(self, zone: str, key: str) -> None:

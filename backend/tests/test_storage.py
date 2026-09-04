@@ -15,6 +15,12 @@ def test_fake_storage_roundtrip():
     assert s.get("master", "abc/cover.png") is None
 
 
+def test_fake_storage_get_bytes():
+    s = FakeStorage()
+    s.put("master", "k/x.png", b"img", "image/png")
+    assert s.get_bytes("master", "k/x.png") == b"img"
+
+
 def test_fake_storage_put_stream_length_mismatch_raises():
     s = FakeStorage()
     with pytest.raises(ValueError):
