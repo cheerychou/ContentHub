@@ -150,3 +150,23 @@ def test_detail_shows_downstream(client):
     )
     detail = client.get(f"/api/assets/{master['id']}").json()
     assert [d["derived_asset_id"] for d in detail["downstream"]]
+
+
+def test_derive_from_publish_rejected(client):
+    master = _make(client, title="母版")
+    pub = client.post(
+        f"/api/assets/{master['id']}/derive",
+        data={"title": "公众号版", "platform": "微信公众号"},
+        files={"file": ("p.md", b"x", "text/markdown")},
+    ).json()
+    resp = client.post(
+        f"/api/assets/{pub['id']}/derive",
+        data={"title": "二阶派生", "platform": "抖音"},
+        files={"file": ("q.md", b"y", "text/markdown")},
+    )
+    assert resp.status_code == 422
+
+
+def test_list_rejects_negative_paging(client):
+    resp = client.get("/api/assets", params={"limit": -1})
+    assert resp.status_code == 422

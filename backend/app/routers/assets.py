@@ -2,8 +2,9 @@ import shutil
 import tempfile
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -132,11 +133,11 @@ def list_assets(
     zone: AssetZone | None = None,
     status: AssetStatus | None = None,
     q: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=0, le=200),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    stmt = select(Asset).order_by(Asset.updated_at.desc()).limit(min(limit, 200)).offset(offset)
+    stmt = select(Asset).order_by(Asset.updated_at.desc()).limit(limit).offset(offset)
     if zone:
         stmt = stmt.where(Asset.zone == zone)
     if status:
@@ -262,6 +263,10 @@ def link_derivation(asset_id: uuid.UUID, body: DerivationCreate,
     d = Derivation(source_asset_id=source.id, derived_asset_id=derived.id,
                    recipe_ref=body.recipe_ref, note=body.note)
     db.add(d)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "派生关系已存在")
     db.refresh(d)
     return d

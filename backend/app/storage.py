@@ -1,3 +1,4 @@
+import threading
 from io import BytesIO
 from typing import Protocol
 
@@ -74,16 +75,19 @@ class FakeStorage:
 
 
 _storage: ObjectStorage | None = None
+_storage_lock = threading.Lock()
 
 
 def get_storage() -> ObjectStorage:
     global _storage
     if _storage is None:
-        _storage = MinioStorage(
-            settings.minio_endpoint,
-            settings.minio_access_key,
-            settings.minio_secret_key,
-            settings.bucket_prefix,
-        )
-        _storage.ensure_buckets()
+        with _storage_lock:
+            if _storage is None:
+                _storage = MinioStorage(
+                    settings.minio_endpoint,
+                    settings.minio_access_key,
+                    settings.minio_secret_key,
+                    settings.bucket_prefix,
+                )
+                _storage.ensure_buckets()
     return _storage
