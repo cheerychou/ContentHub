@@ -1,7 +1,9 @@
+import io
 import json
 import shutil
 import tempfile
 import uuid
+import zipfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -24,6 +26,8 @@ from ..models import (
 )
 from ..rendering import render_html
 from .. import rendering
+from .. import speech
+from .. import subtitles
 from ..schemas import (
     AssetDetail,
     AssetExternalCreate,
@@ -421,4 +425,68 @@ def derive_text_for_master(
     db.refresh(pub)
     detail = AssetDetail.model_validate(pub)
     detail.upstream = [DerivationOut.model_validate(d) for d in pub.upstream]
+    return detail
+
+
+def _shotlist_md(title: str, voice: str, timed: list[dict]) -> str:
+    """素材清单 markdown：逐句编号，留"建议画面"空位供人工填充。"""
+    lines = [f"# 素材清单：{title}", "",
+             f"- 音色：{voice}", f"- 句数：{len(timed)}", "", "## 分句画面", ""]
+    lines += [f"- [{i:02d}] {x['text']} ｜ 建议画面：＿＿＿"
+              for i, x in enumerate(timed, 1)]
+    return "\n".join(lines) + "\n"
+
+
+@router.post("/{master_id}/derive-video-kit", status_code=201,
+             response_model=AssetDetail)
+def derive_video_kit_for_master(
+    master_id: uuid.UUID,
+    voice: str = Form(speech.DEFAULT_VOICE_NAME),
+    title: str | None = Form(None),
+    db: Session = Depends(get_db),
+    storage=Depends(get_storage),
+):
+    """语音包三件套：文本级切句 → TTS（词时间戳）→ SRT + 素材清单 + 音频 zip。"""
+    master = get_asset_or_404(db, master_id)
+    if not master.text_content:
+        raise HTTPException(422, "资产缺少正文 text_content，无法生成语音包")
+    voice_value = speech.VOICES.get(voice)
+    if voice_value is None:
+        raise HTTPException(
+            422, f"未知音色 {voice}；可选 {sorted(speech.VOICES)}")
+
+    text = master.text_content
+    sentences = subtitles.split_text(text)
+    try:
+        mp3, words = speech.synthesize_with_retry(text, voice_value)
+    except Exception as exc:  # noqa: BLE001 - edge-tts/websockets 异常类型不稳定
+        raise HTTPException(502, f"TTS 服务不可达: {exc}")
+    timed = subtitles.align_timestamps(sentences, words)
+    srt = subtitles.to_srt(timed)
+    kit_title = title or f"{master.title} 语音包"
+    shotlist = _shotlist_md(kit_title, voice, timed)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("audio.mp3", mp3)
+        zf.writestr("subtitle.srt", srt)
+        zf.writestr("shotlist.md", shotlist)
+
+    pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
+                title=kit_title, file_name="video-kit.zip", content_type="archive",
+                created_by=master.created_by,
+                meta={"kind": "video_kit", "voice": voice,
+                      "sentences": len(timed)})
+    db.add(pub)
+    db.flush()
+    key = f"{pub.id}/video-kit.zip"
+    storage.put(AssetZone.PUBLISH.value, key, buf.getvalue(), "application/zip")
+    pub.object_key = key
+    db.add(Derivation(source_asset_id=master.id, derived_asset_id=pub.id,
+                      created_by=master.created_by))
+    db.commit()
+    db.refresh(pub)
+    detail = AssetDetail.model_validate(pub)
+    detail.upstream = [DerivationOut.model_validate(d) for d in pub.upstream]
+    detail.file_url = storage.presigned_get(pub.zone.value, pub.object_key)
     return detail
