@@ -34,6 +34,9 @@ services:
 
   api:
     build: ./backend
+    # 密钥类配置（如 CH_LLM_API_KEY）从 .env 读取，不入镜像、不入库
+    env_file:
+      - backend/.env
     environment:
       CH_DATABASE_URL: postgresql+psycopg://contenthub:contenthub@postgres:5432/contenthub
       CH_MINIO_ENDPOINT: minio:9000
