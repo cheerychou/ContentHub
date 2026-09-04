@@ -455,8 +455,8 @@ def derive_video_kit_for_master(
 ):
     """语音包三件套：文本级切句 → TTS（词时间戳）→ SRT + 素材清单 + 音频 zip。"""
     master = get_asset_or_404(db, master_id)
-    if not master.text_content:
-        raise HTTPException(422, "资产缺少正文 text_content，无法生成语音包")
+    if not (master.text_content or "").strip():
+        raise HTTPException(422, "母版正文为空，无法生成语音包")
     voice_value = speech.VOICES.get(voice)
     if voice_value is None:
         raise HTTPException(
@@ -469,6 +469,8 @@ def derive_video_kit_for_master(
     except Exception as exc:  # noqa: BLE001 - edge-tts/websockets 异常类型不稳定
         raise HTTPException(502, f"TTS 服务不可达: {exc}")
     timed = subtitles.align_timestamps(sentences, words)
+    if not timed:
+        raise HTTPException(502, "TTS 未返回有效词序列，无法生成字幕")
     srt = subtitles.to_srt(timed)
     kit_title = title or f"{master.title} 语音包"
     shotlist = _shotlist_md(kit_title, voice, timed)

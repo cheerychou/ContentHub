@@ -129,3 +129,22 @@ def test_video_kit_tts_failure_maps_502(client, monkeypatch):
     resp = client.post(f"/api/assets/{master['id']}/derive-video-kit", data={})
     assert resp.status_code == 502
     assert "TTS" in resp.json()["detail"]
+
+
+def test_video_kit_whitespace_only_text_rejected(client):
+    master = _upload_master(client, text="   \n\t  ")
+    resp = client.post(f"/api/assets/{master['id']}/derive-video-kit", data={})
+    assert resp.status_code == 422
+    assert "母版正文为空" in resp.json()["detail"]
+
+
+def test_video_kit_empty_word_sequence_maps_502(client, monkeypatch):
+    master = _upload_master(client)
+
+    def empty_synth(text, voice=speech_mod.DEFAULT_VOICE, attempts=3):
+        return b"", []  # TTS 静默失败：无异常但零词序列
+
+    monkeypatch.setattr(speech_mod, "synthesize_with_retry", empty_synth)
+    resp = client.post(f"/api/assets/{master['id']}/derive-video-kit", data={})
+    assert resp.status_code == 502
+    assert "词序列" in resp.json()["detail"]
