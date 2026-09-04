@@ -19,6 +19,8 @@ make import VAULT="/path/to/【008】个人文章"
 
 > 注：compose 将 api 映射到宿主机 **8001**（本机 8000 已被占用，见 `docker-compose.yml`）；前端 8080、minio 9000、postgres 5433。
 
+**LLM 配置（可选）**：在 `backend/.env` 中设置 `CH_LLM_API_KEY=...` 后即可使用文本变体生成（口播稿 / GEO 多视角）。未配置 key 时文本变体接口返回 503，封面渲染不受影响。默认接入智谱（open.bigmodel.cn），可通过 `CH_LLM_BASE_URL` / `CH_LLM_MODEL` 切换其他供应商。
+
 开发：`make dev`（仅起 postgres/minio）→ `cd backend && .venv/bin/pytest -v`。
 
 ## 快速开始（文档规范）
