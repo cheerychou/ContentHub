@@ -16,6 +16,7 @@ class ObjectStorage(Protocol):
     def get_bytes(self, zone: str, key: str) -> bytes: ...
     def presigned_get(self, zone: str, key: str, expires_seconds: int = 3600) -> str: ...
     def delete(self, zone: str, key: str) -> None: ...
+    def list_keys(self, zone: str) -> list[str]: ...
 
 
 class MinioStorage:
@@ -56,6 +57,11 @@ class MinioStorage:
     def delete(self, zone: str, key: str) -> None:
         self.client.remove_object(self.buckets[zone], key)
 
+    def list_keys(self, zone: str) -> list[str]:
+        return [obj.object_name
+                for obj in self.client.list_objects(self.buckets[zone],
+                                                    recursive=True)]
+
 
 class FakeStorage:
     """内存实现，供单测使用（不依赖真实 MinIO）。"""
@@ -83,6 +89,8 @@ class FakeStorage:
         return f"fake://{zone}/{key}"
     def delete(self, zone: str, key: str) -> None:
         self.objects.pop((zone, key), None)
+    def list_keys(self, zone: str) -> list[str]:
+        return [key for (z, key) in self.objects if z == zone]
 
 
 _storage: ObjectStorage | None = None

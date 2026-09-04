@@ -35,3 +35,39 @@ def test_fake_storage_put_stream_matching_length():
     s.put_stream("master", "a/b.mov", io.BytesIO(payload),
                  length=len(payload), content_type="video/quicktime")
     assert s.get("master", "a/b.mov") == payload
+
+
+def test_fake_storage_list_keys_filters_by_zone():
+    s = FakeStorage()
+    s.put("source", "u1/a.md", b"x", "text/markdown")
+    s.put("master", "u2/b.mov", b"x", "video/quicktime")
+    s.put("master", "u3/c.png", b"x", "image/png")
+    assert sorted(s.list_keys("master")) == ["u2/b.mov", "u3/c.png"]
+    assert s.list_keys("publish") == []
+
+
+class _StubObject:
+    def __init__(self, object_name: str):
+        self.object_name = object_name
+
+
+class _StubMinioClient:
+    def __init__(self, names: list[str]):
+        self._names = names
+        self.buckets_seen: list[str] = []
+
+    def list_objects(self, bucket: str, recursive: bool = False):
+        assert recursive is True
+        self.buckets_seen.append(bucket)
+        return [_StubObject(n) for n in self._names]
+
+
+def test_minio_storage_list_keys_maps_object_names():
+    """list_keys 递归遍历对应桶并取 object_name（孤儿清理依赖此适配）。"""
+    from app.storage import MinioStorage
+
+    s = MinioStorage("localhost:9000", "k", "s", "ch-")
+    stub = _StubMinioClient(["u2/b.mov", "u3/c.png"])
+    s.client = stub
+    assert s.list_keys("master") == ["u2/b.mov", "u3/c.png"]
+    assert stub.buckets_seen == ["ch-master"]

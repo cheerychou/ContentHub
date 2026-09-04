@@ -118,7 +118,10 @@ class Derivation(Base):
     recipe_ref: Mapped[str | None] = mapped_column(String(200))  # M1 配方预留
     note: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str] = mapped_column(String(100), default="zhoudabo")
-    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # 时区感知时间列（M2 工程清偿修正，与 assets.created_at 一致）
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     source = relationship("Asset", foreign_keys=[source_asset_id], back_populates="downstream")
     derived = relationship("Asset", foreign_keys=[derived_asset_id], back_populates="upstream")

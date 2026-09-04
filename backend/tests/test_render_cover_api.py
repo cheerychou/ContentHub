@@ -76,6 +76,43 @@ def test_render_cover_unknown_platform(client, cover_setup):
     assert resp.status_code == 422
 
 
+def test_render_cover_engine_failure_maps_503(client, cover_setup, monkeypatch):
+    """Playwright/Chromium 启动或渲染异常 → 503（引擎故障，非参数问题）。"""
+    master, recipe = cover_setup
+
+    from app import rendering
+
+    def broken_screenshot(html_text: str, width: int, height: int) -> bytes:
+        raise RuntimeError("Browser closed unexpectedly")
+
+    monkeypatch.setattr(rendering, "screenshot", broken_screenshot)
+
+    resp = client.post(
+        f"/api/assets/{master['id']}/render-cover",
+        data={"recipe_id": recipe["id"], "platform": "抖音·竖版", "title": "封面"})
+    assert resp.status_code == 503
+    assert "渲染引擎不可用" in resp.json()["detail"]
+
+
+def test_render_cover_spec_422_still_precedes_engine_wrap(client, cover_setup, monkeypatch):
+    """spec 参数非法的 422 发生在引擎调用之前，不得被 503 包装吞掉。"""
+    master, recipe = cover_setup
+
+    from app import rendering
+
+    def broken_screenshot(html_text: str, width: int, height: int) -> bytes:
+        raise RuntimeError("should never be reached")
+
+    monkeypatch.setattr(rendering, "screenshot", broken_screenshot)
+
+    resp = client.post(
+        f"/api/assets/{master['id']}/render-cover",
+        data={"recipe_id": recipe["id"], "platform": "抖音·竖版", "title": "封面",
+              "spec": "not-json"})
+    assert resp.status_code == 422
+    assert "spec 非法" in resp.json()["detail"]
+
+
 def test_invalid_spec_returns_422(client, cover_setup):
     master, recipe = cover_setup
     resp = client.post(

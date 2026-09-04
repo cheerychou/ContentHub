@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -69,6 +70,31 @@ def test_derive_text_unconfigured_llm(client, db_session, monkeypatch):
     resp = client.post(f"/api/assets/{master['id']}/derive-text", json={
         "recipe_id": recipe["id"], "title": "t"})
     assert resp.status_code == 503
+
+
+@pytest.mark.parametrize("exc", [
+    httpx.ConnectError("connection refused"),
+    httpx.TimeoutException("timed out"),
+], ids=["connect-error", "timeout"])
+def test_derive_text_network_error_maps_502(client, db_session, monkeypatch, exc):
+    """网络级异常（连不上/超时）→ 502，与上游 HTTP 状态错误同属网关故障。"""
+    master = client.post(
+        "/api/assets", data={"zone": "master", "title": "定稿"},
+        files={"file": ("a.md", "正文".encode(), "text/markdown")}).json()
+    recipe = client.post("/api/recipes", json={
+        "kind": "text_prompt", "name": "P3", "content": "改写【母版正文】"}).json()
+
+    class BrokenLLM:
+        def complete(self, system, user):
+            raise exc
+
+    from app import llm as llm_mod
+    monkeypatch.setattr(llm_mod, "get_llm", lambda: BrokenLLM())
+
+    resp = client.post(f"/api/assets/{master['id']}/derive-text", json={
+        "recipe_id": recipe["id"], "title": "t"})
+    assert resp.status_code == 502
+    assert "LLM 服务不可达" in resp.json()["detail"]
 
 
 def test_derive_text_params_substitution(client, monkeypatch):

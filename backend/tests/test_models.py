@@ -1,5 +1,6 @@
 import pytest
 import sqlalchemy.exc
+from sqlalchemy import select
 
 from app.models import (
     Asset,
@@ -81,4 +82,18 @@ def test_publish_info_columns_default_null(db_session):
     got = db_session.get(Asset, a.id)
     assert got.published_url is None
     assert got.published_at is None
+    assert got.created_at.tzinfo is not None  # timestamptz
+
+
+def test_derivation_created_at_is_timestamptz(db_session):
+    """派生记录 created_at 必须时区感知（与 assets.created_at 同一修正）。"""
+    m = Asset(zone=AssetZone.MASTER, status=AssetStatus.FINALIZED,
+              title="母版", content_type="markdown")
+    p = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
+              title="发布版", content_type="markdown")
+    db_session.add_all([m, p])
+    db_session.flush()
+    db_session.add(Derivation(source_asset_id=m.id, derived_asset_id=p.id))
+    db_session.flush()
+    got = db_session.scalars(select(Derivation)).first()
     assert got.created_at.tzinfo is not None  # timestamptz

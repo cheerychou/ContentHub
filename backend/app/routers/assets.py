@@ -351,18 +351,23 @@ def render_cover_for_master(
         )
     image_bytes = storage.get_bytes(master.zone.value, master.object_key)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        img_path = Path(tmp) / f"bg{Path(master.file_name or 'bg.png').suffix or '.png'}"
-        img_path.write_bytes(image_bytes)
-        html = render_html(recipe.content, {
-            "width": spec_dict["width"], "height": spec_dict["height"],
-            "title": title, "subtitle": subtitle,
-            "image_file": str(img_path),
-            "title_size": max(28, spec_dict["height"] // 12),
-            "subtitle_size": max(18, spec_dict["height"] // 20),
-            "padding": max(24, spec_dict["width"] // 18),
-        })
-        png = rendering.screenshot(html, spec_dict["width"], spec_dict["height"])
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            img_path = Path(tmp) / f"bg{Path(master.file_name or 'bg.png').suffix or '.png'}"
+            img_path.write_bytes(image_bytes)
+            html = render_html(recipe.content, {
+                "width": spec_dict["width"], "height": spec_dict["height"],
+                "title": title, "subtitle": subtitle,
+                "image_file": str(img_path),
+                "title_size": max(28, spec_dict["height"] // 12),
+                "subtitle_size": max(18, spec_dict["height"] // 20),
+                "padding": max(24, spec_dict["width"] // 18),
+            })
+            png = rendering.screenshot(html, spec_dict["width"], spec_dict["height"])
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001 - Playwright 异常类型不稳定
+        raise HTTPException(503, f"渲染引擎不可用: {exc}")
 
     pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
                 title=f"{platform}封面：{title}",
@@ -411,6 +416,8 @@ def derive_text_for_master(
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             502, f"LLM 上游返回 {exc.response.status_code}，文本变体生成失败")
+    except (httpx.ConnectError, httpx.TimeoutException) as exc:
+        raise HTTPException(502, f"LLM 服务不可达: {exc}")
 
     pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
                 title=body.title, content_type="markdown",
