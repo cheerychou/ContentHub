@@ -74,3 +74,14 @@ def test_render_cover_unknown_platform(client, cover_setup):
         f"/api/assets/{master['id']}/render-cover",
         data={"recipe_id": recipe["id"], "platform": "小红书", "title": "t"})
     assert resp.status_code == 422
+
+
+def test_invalid_spec_returns_422(client, cover_setup):
+    master, recipe = cover_setup
+    resp = client.post(
+        f"/api/assets/{master['id']}/render-cover",
+        data={"recipe_id": recipe["id"], "platform": "抖音", "title": "封面",
+              "spec": "not-json"},
+    )
+    assert resp.status_code == 422
+    assert "spec 非法" in resp.json()["detail"]

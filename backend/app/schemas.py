@@ -88,6 +88,7 @@ class DeriveTextCreate(BaseModel):
     recipe_id: uuid.UUID
     title: str
     instructions: str | None = None
+    params: dict[str, str] = {}
 
 
 class StatusUpdate(BaseModel):

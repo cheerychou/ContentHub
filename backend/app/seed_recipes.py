@@ -81,7 +81,7 @@ SEEDS = [
     {
         "kind": RecipeKind.TEXT_PROMPT,
         "name": "GEO 多视角提示词",
-        "description": "面向 AI 搜索引擎优化，从指定用户视角改写母版为易被 AI 搜索引用的多视角内容。运行时先填入视角，再将【母版正文】占位符 replace 为母版文本。",
+        "description": "面向 AI 搜索引擎优化，从指定用户视角改写母版为易被 AI 搜索引用的多视角内容。调用 derive-text 时须传 params: {\"perspective\": \"…\"}（如 汽车维修门店老板），运行时先替换 {perspective} 占位符，再将【母版正文】占位符 replace 为母版文本。",
         "content": GEO_PROMPT,
         "meta": {"placeholders": ["【母版正文】"], "params": ["perspective"]},
     },

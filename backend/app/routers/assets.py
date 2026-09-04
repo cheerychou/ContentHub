@@ -215,6 +215,9 @@ def update_publish_info(asset_id: uuid.UUID, body: PublishInfoUpdate,
     if asset.published_url:
         raise HTTPException(
             409, f"该资产已登记发布链接：{asset.published_url}；清空后可重新登记")
+    if body.published_url is None:
+        raise HTTPException(
+            422, "缺少 published_url（或 clear=true）")
     asset.published_url = str(body.published_url)
     asset.published_at = utcnow()
     db.commit()
@@ -335,7 +338,13 @@ def render_cover_for_master(
     if platform not in COVER_SPECS:
         raise HTTPException(422, f"未知平台 {platform}；可选 {sorted(COVER_SPECS)}")
 
-    spec_dict = spec_for(platform, json.loads(spec) if spec else None)
+    try:
+        spec_dict = spec_for(platform, json.loads(spec) if spec else None)
+    except (json.JSONDecodeError, ValueError, KeyError) as exc:
+        raise HTTPException(
+            422,
+            f"spec 非法：需为 {{\"width\":..,\"height\":..}} JSON 或未知平台：{exc}",
+        )
     image_bytes = storage.get_bytes(master.zone.value, master.object_key)
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -386,6 +395,8 @@ def derive_text_for_master(
         raise HTTPException(404, "文本提示词配方不存在")
 
     system = recipe.content.replace("【母版正文】", master.text_content)
+    for k, v in body.params.items():
+        system = system.replace("{" + k + "}", v)
     user = master.text_content + "\n\n" + (body.instructions or "请开始")
     try:
         llm = llm_mod.get_llm()

@@ -69,3 +69,30 @@ def test_derive_text_unconfigured_llm(client, db_session, monkeypatch):
     resp = client.post(f"/api/assets/{master['id']}/derive-text", json={
         "recipe_id": recipe["id"], "title": "t"})
     assert resp.status_code == 503
+
+
+def test_derive_text_params_substitution(client, monkeypatch):
+    master = client.post(
+        "/api/assets", data={"zone": "master", "title": "定稿"},
+        files={"file": ("a.md", "正文：机油保养 168 元。".encode(),
+                        "text/markdown")}).json()
+    recipe = client.post("/api/recipes", json={
+        "kind": "text_prompt", "name": "GEO-测试",
+        "content": "用户视角：{perspective}。母版：【母版正文】"}).json()
+
+    captured = {}
+
+    class SpyLLM:
+        def complete(self, system, user):
+            captured.update(system=system, user=user)
+            return "# GEO"
+
+    from app import llm as llm_mod
+    monkeypatch.setattr(llm_mod, "get_llm", lambda: SpyLLM())
+
+    resp = client.post(f"/api/assets/{master['id']}/derive-text", json={
+        "recipe_id": recipe["id"], "title": "GEO 变体",
+        "params": {"perspective": "汽车维修门店老板"}})
+    assert resp.status_code == 201
+    assert "汽车维修门店老板" in captured["system"]
+    assert "{perspective}" not in captured["system"]

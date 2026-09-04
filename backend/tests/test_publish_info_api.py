@@ -103,3 +103,21 @@ def test_invalid_url_rejected(client):
         json={"published_url": "not-a-url"},
     )
     assert resp.status_code == 422
+
+
+def test_empty_body_rejected_and_keeps_existing_url(client):
+    master = _make_master(client)
+    pub = _make_publish(client, master)
+    first = client.patch(
+        f"/api/assets/{pub['id']}/publish-info",
+        json={"published_url": "https://mp.weixin.qq.com/s/abc123"},
+    )
+    assert first.status_code == 200
+    other = _make_publish(client, master, title="抖音版")
+    resp = client.patch(f"/api/assets/{other['id']}/publish-info", json={})
+    assert resp.status_code == 422
+    detail = client.get(f"/api/assets/{other['id']}").json()
+    assert detail["published_url"] is None
+    assert detail["published_at"] is None
+    assert client.get(f"/api/assets/{pub['id']}").json()[
+        "published_url"] == "https://mp.weixin.qq.com/s/abc123"

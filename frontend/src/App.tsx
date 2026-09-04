@@ -246,6 +246,16 @@ function Assets() {
             </div>
           )}
 
+          {detail.content_type === "markdown" && detail.text_content && (
+            <div style={{ marginTop: 8 }}>
+              <h3>生成正文</h3>
+              <pre style={{ maxHeight: 300, overflow: "auto", whiteSpace: "pre-wrap",
+                            background: "#f6f6f6", padding: 12 }}>
+                {detail.text_content}
+              </pre>
+            </div>
+          )}
+
           {detail.zone === "publish" && (
             <div style={{ marginTop: 8 }}>
             <h3>发布登记</h3>
