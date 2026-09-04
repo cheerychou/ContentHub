@@ -1,14 +1,27 @@
+import json
 import shutil
 import tempfile
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..cover_specs import COVER_SPECS, spec_for
 from ..db import get_db
-from ..models import Asset, AssetStatus, AssetZone, Derivation, TRANSITIONS
+from ..models import (
+    Asset,
+    AssetStatus,
+    AssetZone,
+    Derivation,
+    Recipe,
+    RecipeKind,
+    TRANSITIONS,
+)
+from ..rendering import render_html
+from .. import rendering
 from ..schemas import (
     AssetDetail,
     AssetExternalCreate,
@@ -270,3 +283,60 @@ def link_derivation(asset_id: uuid.UUID, body: DerivationCreate,
         raise HTTPException(409, "派生关系已存在")
     db.refresh(d)
     return d
+
+
+@router.post("/{master_id}/render-cover", status_code=201, response_model=AssetDetail)
+def render_cover_for_master(
+    master_id: uuid.UUID,
+    recipe_id: uuid.UUID = Form(...),
+    platform: str = Form(...),
+    title: str = Form(...),
+    subtitle: str | None = Form(None),
+    spec: str | None = Form(None),   # JSON: {"width":..,"height":..} 可覆盖
+    db: Session = Depends(get_db),
+    storage=Depends(get_storage),
+):
+    master = get_asset_or_404(db, master_id)
+    if not master.object_key or master.content_type != "image":
+        raise HTTPException(422, "封面渲染的母版必须是已上传图片资产")
+    recipe = db.get(Recipe, recipe_id)
+    if recipe is None or recipe.kind != RecipeKind.COVER_TEMPLATE:
+        raise HTTPException(404, "封面模板配方不存在")
+    if platform not in COVER_SPECS:
+        raise HTTPException(422, f"未知平台 {platform}；可选 {sorted(COVER_SPECS)}")
+
+    spec_dict = spec_for(platform, json.loads(spec) if spec else None)
+    image_bytes = storage.get_bytes(master.zone.value, master.object_key)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        img_path = Path(tmp) / f"bg{Path(master.file_name or 'bg.png').suffix or '.png'}"
+        img_path.write_bytes(image_bytes)
+        html = render_html(recipe.content, {
+            "width": spec_dict["width"], "height": spec_dict["height"],
+            "title": title, "subtitle": subtitle,
+            "image_file": str(img_path),
+            "title_size": max(28, spec_dict["height"] // 12),
+            "subtitle_size": max(18, spec_dict["height"] // 20),
+            "padding": max(24, spec_dict["width"] // 18),
+        })
+        png = rendering.screenshot(html, spec_dict["width"], spec_dict["height"])
+
+    pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
+                title=f"{platform}封面：{title}",
+                file_name=f"cover-{platform}.png", content_type="image",
+                created_by=master.created_by,
+                meta={"platform": platform, "rendered": True,
+                      "recipe_id": str(recipe_id), "spec": spec_dict})
+    db.add(pub)
+    db.flush()
+    key = f"{pub.id}/cover-{platform}.png"
+    storage.put(AssetZone.PUBLISH, key, png, "image/png")
+    pub.object_key = key
+    db.add(Derivation(source_asset_id=master.id, derived_asset_id=pub.id,
+                      recipe_ref=str(recipe_id), created_by=master.created_by))
+    db.commit()
+    db.refresh(pub)
+    detail = AssetDetail.model_validate(pub)
+    detail.upstream = [DerivationOut.model_validate(d) for d in pub.upstream]
+    detail.file_url = storage.presigned_get(pub.zone.value, pub.object_key)
+    return detail
