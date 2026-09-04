@@ -44,17 +44,17 @@ def test_render_cover_end_to_end(client, cover_setup, monkeypatch):
 
     resp = client.post(
         f"/api/assets/{master['id']}/render-cover",
-        data={"recipe_id": recipe["id"], "platform": "抖音",
+        data={"recipe_id": recipe["id"], "platform": "抖音·竖版",
               "title": "跨品牌售后", "subtitle": "浪潮之下"})
     assert resp.status_code == 201
     body = resp.json()
     assert body["zone"] == "publish"
     assert body["content_type"] == "image"
-    assert body["meta"]["platform"] == "抖音"
+    assert body["meta"]["platform"] == "抖音·竖版"
     assert body["meta"]["rendered"] is True
     assert body["upstream"][0]["source_asset_id"] == master["id"]
-    assert captured["w"] == 1080 and captured["h"] == 1440   # 抖音规格
-    assert "跨品牌售后" in captured["html"] and "1080x1440" in captured["html"]
+    assert captured["w"] == 1080 and captured["h"] == 1920   # 抖音竖版规格
+    assert "跨品牌售后" in captured["html"] and "1080x1920" in captured["html"]
 
 
 def test_render_cover_requires_image_master(client, cover_setup):
@@ -64,7 +64,7 @@ def test_render_cover_requires_image_master(client, cover_setup):
         files={"file": ("a.md", b"# x", "text/markdown")}).json()
     resp = client.post(
         f"/api/assets/{text_master['id']}/render-cover",
-        data={"recipe_id": recipe["id"], "platform": "抖音", "title": "t"})
+        data={"recipe_id": recipe["id"], "platform": "抖音·竖版", "title": "t"})
     assert resp.status_code == 422
 
 
@@ -80,7 +80,7 @@ def test_invalid_spec_returns_422(client, cover_setup):
     master, recipe = cover_setup
     resp = client.post(
         f"/api/assets/{master['id']}/render-cover",
-        data={"recipe_id": recipe["id"], "platform": "抖音", "title": "封面",
+        data={"recipe_id": recipe["id"], "platform": "抖音·竖版", "title": "封面",
               "spec": "not-json"},
     )
     assert resp.status_code == 422

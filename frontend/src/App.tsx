@@ -10,7 +10,12 @@ import {
 import Recipes from "./Recipes";
 
 const ZONES: Zone[] = ["source", "master", "publish"];
-const PLATFORMS = ["微信公众号", "抖音", "微信视频号", "哔哩哔哩"];
+const PLATFORMS = [
+  "微信公众号·横版",
+  "抖音·竖版", "抖音·横版",
+  "微信视频号·竖版", "微信视频号·横版",
+  "哔哩哔哩·横版",
+];
 
 function useHashRoute(): string {
   const [route, setRoute] = useState(location.hash);
@@ -266,9 +271,9 @@ function Assets() {
               </p>
             ) : <p>未登记发布链接</p>}
             {typeof detail.meta?.platform === "string"
-              && PUBLISH_ENTRY_URLS[detail.meta.platform] && (
+              && PUBLISH_ENTRY_URLS[detail.meta.platform.split("·")[0]] && (
               <p>
-                <a href={PUBLISH_ENTRY_URLS[detail.meta.platform]}
+                <a href={PUBLISH_ENTRY_URLS[detail.meta.platform.split("·")[0]]}
                    target="_blank" rel="noreferrer">
                   打开平台上传页（{detail.meta.platform}）
                 </a>

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..cover_specs import COVER_SPECS, spec_for
+from ..cover_specs import COVER_SPECS, PLATFORM_GUIDES, base_platform, spec_for
 from ..db import get_db
 from ..models import (
     Asset,
@@ -362,10 +362,11 @@ def render_cover_for_master(
 
     pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
                 title=f"{platform}封面：{title}",
-                file_name=f"cover-{platform}.png", content_type="image",
+                file_name=f"cover-{base_platform(platform)}.png", content_type="image",
                 created_by=master.created_by,
                 meta={"platform": platform, "rendered": True,
-                      "recipe_id": str(recipe_id), "spec": spec_dict})
+                      "recipe_id": str(recipe_id), "spec": spec_dict,
+                      "guide": PLATFORM_GUIDES.get(platform)})
     db.add(pub)
     db.flush()
     key = f"{pub.id}/cover-{platform}.png"
