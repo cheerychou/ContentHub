@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  clearPublishInfo, deleteAsset, derive, deriveText, getAsset, linkDerivation,
-  listAssets, listRecipes, patchStatus, publishInfo, renderCover, uploadAsset,
+  clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
+  fetchPlatformMeta, linkDerivation, listAssets, listRecipes, patchStatus,
+  publishInfo, renderCover, uploadAsset, type PlatformMeta,
 } from "./api";
 import {
-  PUBLISH_ENTRY_URLS, RECIPE_KIND_LABELS, STATUS_LABELS, TRANSITIONS,
+  RECIPE_KIND_LABELS, STATUS_LABELS, TRANSITIONS,
   ZONE_LABELS, type Asset, type AssetDetail, type Recipe, type Zone,
 } from "./types";
 import Recipes from "./Recipes";
 
 const ZONES: Zone[] = ["source", "master", "publish"];
-const PLATFORMS = [
+// 兜底：/api/meta/platforms 不可用时封面表单仍可用（正常运行时以接口为准）
+const PLATFORMS_FALLBACK = [
   "微信公众号·横版",
   "抖音·竖版", "抖音·横版",
   "微信视频号·竖版", "微信视频号·横版",
@@ -83,6 +85,11 @@ function Assets() {
   const [textRecipes, setTextRecipes] = useState<Recipe[]>([]);
   // 发布登记
   const [pubUrl, setPubUrl] = useState("");
+  // 平台常量（启动时拉取一次；失败保持 null，用兜底值渲染）
+  const [platformMeta, setPlatformMeta] = useState<PlatformMeta | null>(null);
+  // 视频语音包表单
+  const [vkVoice, setVkVoice] = useState("晓晓（女）");
+  const [vkTitle, setVkTitle] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -104,10 +111,18 @@ function Assets() {
     void listRecipes("text_prompt").then(setTextRecipes).catch(() => setTextRecipes([]));
   }, []);
   useEffect(() => {
+    void fetchPlatformMeta().then(setPlatformMeta).catch(() => setPlatformMeta(null));
+  }, []);
+  useEffect(() => {
     if (!detail) return;
     void getAsset(detail.id).then((d) => { setDetail(d); setPubUrl(d.published_url ?? ""); })
       .catch(() => setDetail(null));
   }, [assets]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const coverPlatforms = platformMeta?.cover ?? PLATFORMS_FALLBACK;
+  const entryUrls = platformMeta?.entry_urls ?? {};
+  const voiceNames = Object.keys(platformMeta?.voices ?? {});
+  const voiceOptions = voiceNames.length > 0 ? voiceNames : [vkVoice];
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
@@ -203,7 +218,7 @@ function Assets() {
             <div style={{ marginTop: 8 }}>
               <h3>渲染封面</h3>
               <select value={rcPlatform} onChange={(e) => setRcPlatform(e.target.value)}>
-                {PLATFORMS.map((p) => <option key={p}>{p}</option>)}
+                {coverPlatforms.map((p) => <option key={p}>{p}</option>)}
               </select>
               <select value={rcRecipeId} onChange={(e) => setRcRecipeId(e.target.value)}>
                 <option value="">选择封面模板…</option>
@@ -261,6 +276,40 @@ function Assets() {
             </div>
           )}
 
+          {detail.zone === "publish" && detail.content_type === "markdown"
+            && detail.text_content && (
+            <div style={{ marginTop: 8 }}>
+              <h3>生成视频语音包</h3>
+              <select value={vkVoice} onChange={(e) => setVkVoice(e.target.value)}>
+                {voiceOptions.map((v) => <option key={v}>{v}</option>)}
+              </select>
+              <input placeholder="语音包标题（可选）" value={vkTitle}
+                     onChange={(e) => setVkTitle(e.target.value)} />
+              <button onClick={() => void run(async () => {
+                await deriveVideoKit(detail.id, vkVoice, vkTitle || undefined);
+                setVkTitle("");
+                setDetail(await getAsset(detail.id)); void refresh();
+              })}>生成语音包</button>
+            </div>
+          )}
+
+          {detail.content_type === "archive" && detail.meta?.kind === "video_kit"
+            && detail.file_url && (
+            <div style={{ marginTop: 8 }}>
+              <h3>视频语音包</h3>
+              <p>
+                音色：{typeof detail.meta.voice === "string" ? detail.meta.voice : "—"}
+                {typeof detail.meta.sentences === "number"
+                  && <> · 分句 {detail.meta.sentences} 句</>}
+              </p>
+              <p>
+                <a href={detail.file_url} download>
+                  下载语音包（zip：音频 + SRT 字幕 + 素材清单）
+                </a>
+              </p>
+            </div>
+          )}
+
           {detail.zone === "publish" && (
             <div style={{ marginTop: 8 }}>
             <h3>发布登记</h3>
@@ -271,9 +320,9 @@ function Assets() {
               </p>
             ) : <p>未登记发布链接</p>}
             {typeof detail.meta?.platform === "string"
-              && PUBLISH_ENTRY_URLS[detail.meta.platform.split("·")[0]] && (
+              && entryUrls[detail.meta.platform.split("·")[0]] && (
               <p>
-                <a href={PUBLISH_ENTRY_URLS[detail.meta.platform.split("·")[0]]}
+                <a href={entryUrls[detail.meta.platform.split("·")[0]]}
                    target="_blank" rel="noreferrer">
                   打开平台上传页（{detail.meta.platform}）
                 </a>

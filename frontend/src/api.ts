@@ -166,3 +166,28 @@ export async function clearPublishInfo(id: string): Promise<Asset> {
   if (!resp.ok) throw new Error(await errDetail(resp));
   return resp.json();
 }
+
+export interface PlatformMeta {
+  cover: string[];
+  entry_urls: Record<string, string>;
+  voices: Record<string, string>;
+}
+
+export async function fetchPlatformMeta(): Promise<PlatformMeta> {
+  const resp = await fetch(`${base}/meta/platforms`);
+  if (!resp.ok) throw new Error(`平台常量获取失败 ${resp.status}`);
+  return resp.json();
+}
+
+export async function deriveVideoKit(
+  masterId: string, voice: string, title?: string
+): Promise<AssetDetail> {
+  const form = new FormData();
+  form.append("voice", voice);
+  if (title) form.append("title", title);
+  const resp = await fetch(`${base}/assets/${masterId}/derive-video-kit`, {
+    method: "POST", body: form,
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}

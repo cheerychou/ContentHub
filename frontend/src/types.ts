@@ -58,12 +58,8 @@ export const RECIPE_KIND_LABELS: Record<RecipeKind, string> = {
   text_prompt: "文本提示词",
 };
 
-export const PUBLISH_ENTRY_URLS: Record<string, string> = {
-  微信公众号: "https://mp.weixin.qq.com/",
-  抖音: "https://creator.douyin.com/",
-  微信视频号: "https://channels.weixin.qq.com/platform/post-publish",
-  哔哩哔哩: "https://member.bilibili.com/platform/upload/video/frame",
-};
+// 平台常量（发布页 URL / 封面规格 / 音色）不再前端硬编码：
+// 运行时经 GET /api/meta/platforms 获取（见 api.ts fetchPlatformMeta）。
 
 export const ZONE_LABELS: Record<Zone, string> = {
   source: "源料区",
