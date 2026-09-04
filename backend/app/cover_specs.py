@@ -7,6 +7,15 @@ COVER_SPECS: dict[str, dict[str, int]] = {
 }
 
 
+# 各平台上传/发布页跳转 URL（前端"去发布"按钮用）
+PUBLISH_ENTRY_URLS: dict[str, str] = {
+    "微信公众号": "https://mp.weixin.qq.com/",
+    "抖音": "https://creator.douyin.com/",
+    "微信视频号": "https://channels.weixin.qq.com/platform/post-publish",
+    "哔哩哔哩": "https://member.bilibili.com/platform/upload/video/frame",
+}
+
+
 def spec_for(platform: str, override: dict | None = None) -> dict[str, int]:
     base = dict(COVER_SPECS[platform])  # 未知平台 KeyError → 调用方转 422
     if override:

@@ -20,6 +20,7 @@ from ..models import (
     Recipe,
     RecipeKind,
     TRANSITIONS,
+    utcnow,
 )
 from ..rendering import render_html
 from .. import rendering
@@ -30,6 +31,7 @@ from ..schemas import (
     DerivationCreate,
     DerivationOut,
     DeriveTextCreate,
+    PublishInfoUpdate,
     StatusUpdate,
 )
 from ..storage import get_storage
@@ -191,6 +193,30 @@ def update_status(asset_id: uuid.UUID, body: StatusUpdate,
             f"允许 → {sorted(s.value for s in allowed)}",
         )
     asset.status = body.status
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+@router.patch("/{asset_id}/publish-info", response_model=AssetOut)
+def update_publish_info(asset_id: uuid.UUID, body: PublishInfoUpdate,
+                        db: Session = Depends(get_db)):
+    """发布登记：回填 published_url 并自动记录 published_at；状态不经由此端点管理。"""
+    asset = get_asset_or_404(db, asset_id)
+    if asset.zone != AssetZone.PUBLISH:
+        raise HTTPException(
+            422, f"仅发布态资产可登记发布信息，当前 zone={asset.zone.value}")
+    if body.clear:
+        asset.published_url = None
+        asset.published_at = None
+        db.commit()
+        db.refresh(asset)
+        return asset
+    if asset.published_url:
+        raise HTTPException(
+            409, f"该资产已登记发布链接：{asset.published_url}；清空后可重新登记")
+    asset.published_url = str(body.published_url)
+    asset.published_at = utcnow()
     db.commit()
     db.refresh(asset)
     return asset

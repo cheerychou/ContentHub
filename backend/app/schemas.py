@@ -52,6 +52,8 @@ class AssetOut(BaseModel):
     text_content: str | None = None
     created_by: str
     reviewed_by: str | None = None
+    published_url: str | None = None
+    published_at: datetime | None = None
     meta: dict
     created_at: datetime
     updated_at: datetime
@@ -90,6 +92,13 @@ class DeriveTextCreate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: AssetStatus
+
+
+class PublishInfoUpdate(BaseModel):
+    """发布登记：回填 published_url（自动记录时间）；clear=true 清空重登。"""
+
+    published_url: HttpUrl | None = None
+    clear: bool = False
 
 
 class DerivationCreate(BaseModel):
