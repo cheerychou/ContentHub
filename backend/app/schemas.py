@@ -4,7 +4,38 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, HttpUrl
 
-from .models import AssetStatus, AssetZone
+from .models import AssetStatus, AssetZone, RecipeKind
+
+
+class RecipeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: RecipeKind
+    name: str
+    description: str | None = None
+    content: str
+    meta: dict
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecipeCreate(BaseModel):
+    kind: RecipeKind
+    name: str
+    description: str | None = None
+    content: str
+    meta: dict = {}
+    created_by: str = "zhoudabo"
+
+
+class RecipeUpdate(BaseModel):
+    kind: RecipeKind | None = None
+    name: str | None = None
+    description: str | None = None
+    content: str | None = None
+    meta: dict | None = None
 
 
 class AssetOut(BaseModel):
