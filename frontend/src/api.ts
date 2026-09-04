@@ -1,4 +1,4 @@
-import type { Asset, AssetDetail } from "./types";
+import type { Asset, AssetDetail, Recipe, RecipeKind } from "./types";
 
 const base = "/api";
 
@@ -77,4 +77,92 @@ export async function linkDerivation(
 export async function deleteAsset(id: string): Promise<void> {
   const resp = await fetch(`${base}/assets/${id}`, { method: "DELETE" });
   if (!resp.ok) throw new Error("删除失败");
+}
+
+export async function listRecipes(kind?: string): Promise<Recipe[]> {
+  const qs = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+  const resp = await fetch(`${base}/recipes${qs}`);
+  if (!resp.ok) throw new Error(`配方列表失败 ${resp.status}`);
+  return resp.json();
+}
+
+export async function createRecipe(body: {
+  kind: RecipeKind; name: string; description?: string; content: string; meta?: Record<string, unknown>;
+}): Promise<Recipe> {
+  const resp = await fetch(`${base}/recipes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
+export async function updateRecipe(
+  id: string, body: { kind?: RecipeKind; name?: string; description?: string; content?: string; meta?: Record<string, unknown> }
+): Promise<Recipe> {
+  const resp = await fetch(`${base}/recipes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  const resp = await fetch(`${base}/recipes/${id}`, { method: "DELETE" });
+  if (!resp.ok) throw new Error("删除配方失败");
+}
+
+export async function renderCover(
+  masterId: string, recipeId: string, platform: string,
+  title: string, subtitle?: string, spec?: Record<string, unknown>
+): Promise<AssetDetail> {
+  const form = new FormData();
+  form.append("recipe_id", recipeId);
+  form.append("platform", platform);
+  form.append("title", title);
+  if (subtitle) form.append("subtitle", subtitle);
+  if (spec) form.append("spec", JSON.stringify(spec));
+  const resp = await fetch(`${base}/assets/${masterId}/render-cover`, {
+    method: "POST", body: form,
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
+export async function deriveText(
+  masterId: string, recipeId: string, title: string, instructions?: string
+): Promise<AssetDetail> {
+  const resp = await fetch(`${base}/assets/${masterId}/derive-text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      recipe_id: recipeId, title,
+      ...(instructions ? { instructions } : {}),
+    }),
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
+export async function publishInfo(id: string, publishedUrl: string): Promise<Asset> {
+  const resp = await fetch(`${base}/assets/${id}/publish-info`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ published_url: publishedUrl }),
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
+export async function clearPublishInfo(id: string): Promise<Asset> {
+  const resp = await fetch(`${base}/assets/${id}/publish-info`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clear: true }),
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
 }
