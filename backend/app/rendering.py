@@ -2,11 +2,14 @@
 import tempfile
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
+
+# 沙箱环境：配方内容视为不可信模板源，禁止访问对象属性/危险调用（防 SSTI）
+_env = SandboxedEnvironment()
 
 
 def render_html(recipe_content: str, context: dict) -> str:
-    return Template(recipe_content).render(**context)
+    return _env.from_string(recipe_content).render(**context)
 
 
 def screenshot(html_text: str, width: int, height: int) -> bytes:
