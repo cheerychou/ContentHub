@@ -21,6 +21,8 @@ make import VAULT="/path/to/【008】个人文章"
 
 **LLM 配置（可选）**：在 `backend/.env` 中设置 `CH_LLM_API_KEY=...` 后即可使用文本变体生成（口播稿 / GEO 多视角）。未配置 key 时文本变体接口返回 503，封面渲染不受影响。默认接入智谱（open.bigmodel.cn），可通过 `CH_LLM_BASE_URL` / `CH_LLM_MODEL` 切换其他供应商。
 
+口播稿详情页可一键生成"配音+SRT字幕+素材清单"zip，供剪映导入。
+
 开发：`make dev`（仅起 postgres/minio）→ `cd backend && .venv/bin/pytest -v`。
 
 ## 快速开始（文档规范）
