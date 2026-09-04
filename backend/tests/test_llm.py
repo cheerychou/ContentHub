@@ -10,12 +10,15 @@ def test_fake_llm_returns_content():
 
 
 def test_get_llm_without_key_raises(monkeypatch):
-    monkeypatch.setenv("CH_LLM_API_KEY", "")
-    import importlib, app.llm as m
-    importlib.reload(m)
-    # reload 后异常类身份已更换，必须用 m.LLMNotConfigured 而非顶部导入的旧类
-    with pytest.raises(m.LLMNotConfigured):
-        m.get_llm()
+    # 直接替换 get_llm 读取的 settings 引用，避免 importlib.reload 及 .env 真实 key 干扰
+    import types
+
+    import app.llm as llm_mod
+    monkeypatch.setattr(llm_mod, "settings", types.SimpleNamespace(
+        llm_api_key="", llm_base_url="x", llm_model="m"))
+    monkeypatch.setattr(llm_mod, "_llm", None)
+    with pytest.raises(llm_mod.LLMNotConfigured):
+        llm_mod.get_llm()
 
 
 def test_openai_compat_request_shape():

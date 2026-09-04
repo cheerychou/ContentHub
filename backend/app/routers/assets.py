@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+import httpx
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -28,9 +29,12 @@ from ..schemas import (
     AssetOut,
     DerivationCreate,
     DerivationOut,
+    DeriveTextCreate,
     StatusUpdate,
 )
 from ..storage import get_storage
+from .. import llm as llm_mod
+from ..llm import LLMNotConfigured
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 
@@ -339,4 +343,44 @@ def render_cover_for_master(
     detail = AssetDetail.model_validate(pub)
     detail.upstream = [DerivationOut.model_validate(d) for d in pub.upstream]
     detail.file_url = storage.presigned_get(pub.zone.value, pub.object_key)
+    return detail
+
+
+@router.post("/{master_id}/derive-text", status_code=201, response_model=AssetDetail)
+def derive_text_for_master(
+    master_id: uuid.UUID,
+    body: DeriveTextCreate,
+    db: Session = Depends(get_db),
+):
+    master = get_asset_or_404(db, master_id)
+    if not master.text_content:
+        raise HTTPException(422, "母版缺少正文 text_content，无法派生文本变体")
+    recipe = db.get(Recipe, body.recipe_id)
+    if recipe is None or recipe.kind != RecipeKind.TEXT_PROMPT:
+        raise HTTPException(404, "文本提示词配方不存在")
+
+    system = recipe.content.replace("【母版正文】", master.text_content)
+    user = master.text_content + "\n\n" + (body.instructions or "请开始")
+    try:
+        llm = llm_mod.get_llm()
+        generated = llm.complete(system, user)
+    except LLMNotConfigured as exc:
+        raise HTTPException(503, str(exc))
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            502, f"LLM 上游返回 {exc.response.status_code}，文本变体生成失败")
+
+    pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
+                title=body.title, content_type="markdown",
+                text_content=generated, created_by=master.created_by,
+                meta={"generated": True, "recipe_id": str(body.recipe_id)})
+    db.add(pub)
+    db.flush()
+    db.add(Derivation(source_asset_id=master.id, derived_asset_id=pub.id,
+                      recipe_ref=str(body.recipe_id),
+                      created_by=master.created_by))
+    db.commit()
+    db.refresh(pub)
+    detail = AssetDetail.model_validate(pub)
+    detail.upstream = [DerivationOut.model_validate(d) for d in pub.upstream]
     return detail

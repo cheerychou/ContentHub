@@ -49,6 +49,7 @@ class AssetOut(BaseModel):
     content_type: str
     object_key: str | None = None
     source_url: str | None = None
+    text_content: str | None = None
     created_by: str
     reviewed_by: str | None = None
     meta: dict
@@ -79,6 +80,12 @@ class AssetExternalCreate(BaseModel):
     title: str
     source_url: HttpUrl
     meta: dict = {}
+
+
+class DeriveTextCreate(BaseModel):
+    recipe_id: uuid.UUID
+    title: str
+    instructions: str | None = None
 
 
 class StatusUpdate(BaseModel):
