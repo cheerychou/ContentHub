@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
   fetchPlatformMeta, linkDerivation, listAssets, listRecipes, patchStatus,
@@ -59,6 +59,12 @@ function Assets() {
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const [error, setError] = useState("");
+  const detailRef = useRef<HTMLElement | null>(null);
+
+  // 详情面板在长列表下方：打开/更新时自动滚入视野
+  useEffect(() => {
+    if (detail) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [detail]);
 
   // 上传表单
   const [upZone, setUpZone] = useState<string>("master");
@@ -185,7 +191,7 @@ function Assets() {
       </table>
 
       {detail && (
-        <section style={{ border: "1px solid #369", padding: 12, marginTop: 16 }}>
+        <section ref={detailRef} style={{ border: "1px solid #369", padding: 12, marginTop: 16 }}>
           <h2>{detail.title}</h2>
           <p>
             {ZONE_LABELS[detail.zone]} · {STATUS_LABELS[detail.status]} · {detail.content_type}
