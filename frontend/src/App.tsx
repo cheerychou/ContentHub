@@ -212,6 +212,10 @@ function Assets() {
           {detail.zone === "master" && (
             <div style={{ marginTop: 8 }}>
               <h3>派生发布物</h3>
+              <p style={{ color: "#888", margin: "4px 0" }}>
+                用于登记<strong>已做好的成品文件</strong>（如剪映导出的成片、别处做好的版本）。
+                要自动生成封面 → 请先上传图片母版，用它的「渲染封面」。
+              </p>
               <select value={dvPlatform} onChange={(e) => setDvPlatform(e.target.value)}>
                 {["微信公众号", "抖音", "微信视频号", "哔哩哔哩", "官网"].map((p) =>
                   <option key={p}>{p}</option>)}
