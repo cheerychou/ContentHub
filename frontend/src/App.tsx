@@ -228,6 +228,12 @@ function Assets() {
             </div>
           )}
 
+          {detail.zone === "master" && detail.content_type !== "image" && (
+            <p style={{ color: "#888", marginTop: 8 }}>
+              渲染封面需要图片底图：请先上传一张封面底图（图片文件）作为母版，再在它的详情里选平台渲染。
+            </p>
+          )}
+
           {detail.zone === "master" && detail.content_type === "image" && (
             <div style={{ marginTop: 8 }}>
               <h3>渲染封面</h3>
