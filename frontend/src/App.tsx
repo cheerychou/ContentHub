@@ -147,11 +147,19 @@ function Assets() {
         </select>
         <input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
         <input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
-        <button onClick={() => void run(async () => {
-          if (!upFile || !upTitle) return;
-          await uploadAsset(upZone, upTitle, upFile);
-          setUpTitle(""); setUpFile(null); void refresh();
-        })}>上传</button>
+        <button
+          disabled={!upFile || !upTitle}
+          title={!upFile || !upTitle ? "请先填写标题并选择文件" : undefined}
+          style={{ opacity: !upFile || !upTitle ? 0.5 : 1 }}
+          onClick={() => void run(async () => {
+            if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
+            await uploadAsset(upZone, upTitle, upFile);
+            setUpTitle(""); setUpFile(null); void refresh();
+          })}
+        >上传</button>
+        {(!upFile || !upTitle) && (
+          <span style={{ marginLeft: 8, color: "#888" }}>填写标题并选择文件后可上传</span>
+        )}
       </section>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
