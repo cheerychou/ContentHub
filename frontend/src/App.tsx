@@ -19,6 +19,37 @@ const PLATFORMS_FALLBACK = [
   "哔哩哔哩·横版",
 ];
 
+// 状态驱动的「下一步」指引（流程导向，降低学习成本）
+function nextStepHint(d: AssetDetail): string {
+  if (d.zone === "source") {
+    return "这是源料（底片），仅供引用与检索。要加工内容，请回顶部另传母版。";
+  }
+  if (d.zone === "master") {
+    if (d.content_type === "image") {
+      if (d.status === "topic" || d.status === "drafting")
+        return "这是封面底图。写好后点下方「定稿」，再用「渲染封面」按平台出图。";
+      if (d.status === "finalized")
+        return "✓ 底图已定稿 → 用下方「渲染封面」选平台（如 抖音·竖版）出图。";
+      return "底图已进入发布流程。";
+    }
+    if (d.status === "topic" || d.status === "drafting")
+      return "还在创作中。写完后点下方「定稿」，解锁封面与变体能力。";
+    if (d.status === "finalized")
+      return "✓ 已定稿，两件事可做：① 下方「文本变体」生成口播稿/公众号版/GEO 变体；② 另传一张图片母版来渲染本篇封面。";
+    if (d.status === "publishing")
+      return "发布物装配中。各平台发布完成后点「已发布」收口。";
+    return "母版已收口 ✓。派生内容在下方血缘中统一管理。";
+  }
+  // publish 区
+  if (d.meta?.kind === "video_kit")
+    return "语音包就绪 → 点「文件」下载 zip，解压后把 subtitle.srt 导入剪映、按 shotlist.md 装配画面。";
+  if (d.content_type === "markdown")
+    return "这是文本发布物（如口播稿）→ 用下方「生成视频语音包」出三件套；正式发布后填链接完成登记。";
+  if (d.status === "publishing")
+    return "发布完成了吗？→ 下方填入平台链接完成登记（登记后状态可点「已发布」收口）。";
+  return "已登记发布 ✓。全流程完成。";
+}
+
 function useHashRoute(): string {
   const [route, setRoute] = useState(location.hash);
   useEffect(() => {
@@ -133,6 +164,23 @@ function Assets() {
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
       <h1>ContentHub · 资产底座</h1>
+      <div style={{
+        background: "#eef4fb", border: "1px solid #bcd4ec", borderRadius: 6,
+        padding: "8px 12px", marginBottom: 12, fontSize: 14,
+      }}>
+        <strong>内容流水线：</strong>
+        {["① 上传母版/源料", "② 定稿", "③ 渲染封面 / 文本变体", "④ 视频语音包", "⑤ 发布登记"].map(
+          (s, i) => (
+            <span key={s}>
+              {i > 0 && <span style={{ margin: "0 6px", color: "#7a9cc4" }}>→</span>}
+              <strong>{s}</strong>
+            </span>
+          ))}
+        <div style={{ color: "#5a7396", marginTop: 4 }}>
+          点击列表任意一行打开详情；详情面板按资产状态给出「下一步」指引。常用路径：文章母版 →
+          文本变体出「口播稿」→ 语音包三件套进剪映；图片母版 → 渲染封面出多平台图。
+        </div>
+      </div>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       <section style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -193,6 +241,12 @@ function Assets() {
       {detail && (
         <section ref={detailRef} style={{ border: "1px solid #369", padding: 12, marginTop: 16 }}>
           <h2>{detail.title}</h2>
+          <div style={{
+            background: "#f0f7ee", border: "1px solid #c4dcc0", borderRadius: 6,
+            padding: "6px 10px", marginBottom: 8, fontSize: 14,
+          }}>
+            <strong>下一步：</strong>{nextStepHint(detail)}
+          </div>
           <p>
             {ZONE_LABELS[detail.zone]} · {STATUS_LABELS[detail.status]} · {detail.content_type}
             {detail.source_url && <> · <a href={detail.source_url}>源链接</a></>}
