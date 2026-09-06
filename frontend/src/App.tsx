@@ -11,13 +11,6 @@ import {
 import Recipes from "./Recipes";
 
 const ZONES: Zone[] = ["source", "master", "publish"];
-// 兜底：/api/meta/platforms 不可用时封面表单仍可用（正常运行时以接口为准）
-const PLATFORMS_FALLBACK = [
-  "微信公众号·横版",
-  "抖音·竖版", "抖音·横版",
-  "微信视频号·竖版", "微信视频号·横版",
-  "哔哩哔哩·横版",
-];
 
 // 状态驱动的「下一步」指引（流程导向，降低学习成本）
 function nextStepHint(d: AssetDetail): string {
@@ -167,7 +160,7 @@ function Assets() {
   const [textRecipes, setTextRecipes] = useState<Recipe[]>([]);
   // 发布登记
   const [pubUrl, setPubUrl] = useState("");
-  // 平台常量（启动时拉取一次；失败保持 null，用兜底值渲染）
+  // 平台常量（启动时拉取一次；失败保持 null：隐藏平台下拉并提示不可用）
   const [platformMeta, setPlatformMeta] = useState<PlatformMeta | null>(null);
   // 视频语音包表单
   const [vkVoice, setVkVoice] = useState("晓晓（女）");
@@ -201,7 +194,7 @@ function Assets() {
       .catch(() => setDetail(null));
   }, [assets]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const coverPlatforms = platformMeta?.cover ?? PLATFORMS_FALLBACK;
+  const coverPlatforms = platformMeta?.cover ?? [];
   const entryUrls = platformMeta?.entry_urls ?? {};
   const voiceNames = Object.keys(platformMeta?.voices ?? {});
   const voiceOptions = voiceNames.length > 0 ? voiceNames : [vkVoice];
@@ -239,9 +232,15 @@ function Assets() {
       {showDraftNote && (
         <p style={{ color: "#b26b00", margin: "4px 0" }}>建议先定稿，再按平台出图。</p>
       )}
-      <select value={rcPlatform} onChange={(e) => setRcPlatform(e.target.value)}>
-        {coverPlatforms.map((p) => <option key={p}>{p}</option>)}
-      </select>
+      {platformMeta === null ? (
+        <span style={{ color: "#888", fontSize: 14 }}>
+          平台列表不可用（meta 接口未响应）
+        </span>
+      ) : (
+        <select value={rcPlatform} onChange={(e) => setRcPlatform(e.target.value)}>
+          {coverPlatforms.map((p) => <option key={p}>{p}</option>)}
+        </select>
+      )}
       <select value={rcRecipeId} onChange={(e) => setRcRecipeId(e.target.value)}>
         <option value="">选择封面模板…</option>
         {coverRecipes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}

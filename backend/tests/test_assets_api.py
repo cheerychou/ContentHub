@@ -7,11 +7,15 @@ from app.storage import FakeStorage, get_storage
 
 
 @pytest.fixture()
-def client(db_session):
+def fake():
+    return FakeStorage()
+
+
+@pytest.fixture()
+def client(db_session, fake):
     def _override_get_db():
         yield db_session
 
-    fake = FakeStorage()
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_storage] = lambda: fake
     with TestClient(app) as c:
@@ -117,3 +121,16 @@ def test_upload_docx_extracts_text(client):
     body = resp.json()
     assert body["content_type"] == "docx"
     assert "第二段：供应链视角。" in body["text_content"]
+
+
+def test_upload_broken_docx_422_and_no_object(client, fake):
+    """损坏 docx → 422，且先抽取后落盘：存储中不残留孤儿对象。"""
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "坏 Word"},
+        files={"file": ("x.docx", b"not a docx",
+                        "application/vnd.openxmlformats-officedocument"
+                        ".wordprocessingml.document")},
+    )
+    assert resp.status_code == 422
+    assert "docx 解析失败" in resp.json()["detail"]
+    assert fake.objects == {}

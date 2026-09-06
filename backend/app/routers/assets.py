@@ -74,15 +74,22 @@ async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
     UploadFile 已在磁盘 spill：读头部判定大小，小文件进内存并抽文本，
     大文件 spool 流式上传。返回抽取的文本（markdown/docx），其余返回 None；
     超 2GB 抛 413（调用方须 rollback 后 re-raise）。
+
+    小文件路径先抽取后落盘：docx 解析失败抛 422 时存储中不残留孤儿对象。
     """
     data = await file.read(INLINE_TEXT_LIMIT + 1)
     if len(data) <= INLINE_TEXT_LIMIT:
-        storage.put(zone, key, data, file.content_type or "application/octet-stream")
+        text: str | None = None
         if content_type == "markdown":
-            return data.decode("utf-8", errors="ignore")
-        if content_type == "docx":
-            return docx_text.extract_text(data)
-        return None
+            text = data.decode("utf-8", errors="ignore")  # 永不抛错
+        elif content_type == "docx":
+            try:
+                text = docx_text.extract_text(data)
+            except Exception as exc:  # noqa: BLE001 - python-docx 异常类型不稳定
+                raise HTTPException(
+                    422, "docx 解析失败：文件可能已损坏或非有效 Word 文档") from exc
+        storage.put(zone, key, data, file.content_type or "application/octet-stream")
+        return text
     with tempfile.SpooledTemporaryFile(max_size=64 * 1024 * 1024) as tmp:
         tmp.write(data)
         shutil.copyfileobj(file.file, tmp)
@@ -420,7 +427,7 @@ def derive_text_for_master(
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             502, f"LLM 上游返回 {exc.response.status_code}，文本变体生成失败")
-    except (httpx.ConnectError, httpx.TimeoutException) as exc:
+    except httpx.TransportError as exc:
         raise HTTPException(502, f"LLM 服务不可达: {exc}")
 
     pub = Asset(zone=AssetZone.PUBLISH, status=AssetStatus.PUBLISHING,
