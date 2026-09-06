@@ -481,7 +481,9 @@ function Assets() {
         <tbody>
           {assets.map((a) => (
             <tr key={a.id} onClick={() => void run(async () => {
-              setDetail(await getAsset(a.id));
+              const d = await getAsset(a.id);
+              setDetail(d);
+              setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
             })}
                 style={{ cursor: "pointer", borderTop: "1px solid #eee" }}>
               <td>{a.title}</td>
@@ -519,7 +521,7 @@ function Assets() {
             </div>
           )}
 
-          {detail.content_type === "markdown" && detail.text_content && (
+          {(detail.content_type === "markdown" || detail.content_type === "docx") && detail.text_content && (
             <div style={{ marginTop: 8 }}>
               <h3>生成正文</h3>
               <pre style={{ maxHeight: 300, overflow: "auto", whiteSpace: "pre-wrap",
