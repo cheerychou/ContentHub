@@ -4,11 +4,11 @@ title: 数字内容供应链系统(A-DCSC) MVP建设方案
 category: PRD
 domain: MVP
 status: active
-version: 2.2
+version: 2.3
 doc_type: prd
 author: zhoudabo
 created_at: 2026-09-03
-updated_at: 2026-09-04
+updated_at: 2026-09-05
 tags: [内容供应链, 三态分离, 配方引擎, 封面渲染, GEO, 血缘, FastAPI, PostgreSQL, MinIO]
 related: [STR-BV-001, KNW-EXP-001]
 ---
@@ -37,6 +37,7 @@ ContentHub（A-DCSC）是**面向 B2B 企业的内容供应链系统**：让企�
 | M1 配方派生引擎 | 一篇定稿文章，15 分钟内产出四平台封面 + 口播稿 + 2 个 GEO 变体并完成发布登记（现状为数小时手工）→ ✅ 已完成 \| commit: 3900940 · 2026-09-04（四平台封面渲染尺寸实测一致；发布登记闭环；文本变体真实 LLM 链路 2026-09-04 配 key 后复验通过，口播稿实生成 482 字；GEO 多视角待实际使用复验） |
 | M2 生态对接 | 视频语音包（配音+SRT+素材清单，B 方案）交付；M0/M1 终审遗留清偿（502/503 映射、Derivation 时区、孤儿清理 CLI、preflight 门禁、平台常量 API 化）→ ✅ 已完成 \| commit: 55e1c3e · 2026-09-04（真实链路验收通过：口播稿→语音包 zip 实测；剪映 11.4 导入实测待用户执行） |
 | M2 顺延项 | CDD3 内容包导出与协作原语 UI 顺延——触发条件分别为 CDD3 MK-005 Phase 3 启动 / 第二名使用者出现 |
+| M3（MVP 后第一迭代） | UI 状态驱动任务流（主任务默认展开/低频折叠）+ 状态筛选 chips + docx 正文抽取 + 工程清偿（TransportError/死代码/docx 防呆/preflight 已在 M2）→ 🔧 代码完成并通过终审，UX 验收待用户执行 |
 
 ## 3. 核心概念模型
 
@@ -141,3 +142,4 @@ v1.x（2026-09-03）以"三态存储 + OpenMetadata/Neo4j 血缘图谱"为核心
 | 2.0 | 2026-09-04 | 按定位定稿整体重写：配方派生引擎优先，轻量技术栈，Web 自托管交付；废弃 v1.x 企业栈方案 | zhoudabo |
 | 2.1 | 2026-09-04 | 封面规格改为平台×方向 6 键；§4 定 M2 视频段交付物（配音+SRT+素材清单），关闭剪映草稿路线 | zhoudabo |
 | 2.2 | 2026-09-04 | M2 验收通过并绑定证据：§2 M2 行改写为实际交付范围（视频语音包 + M0/M1 遗留清偿），CDD3 对接/协作原语标注顺延触发条件 | zhoudabo |
+| 2.3 | 2026-09-05 | 新增 M3 迭代：UI 任务流/docx/清偿；MVP 三期（M0-M2）已全部交付 | zhoudabo |
