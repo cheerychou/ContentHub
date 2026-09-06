@@ -28,6 +28,7 @@ from ..rendering import render_html
 from .. import rendering
 from .. import speech
 from .. import subtitles
+from .. import docx_text
 from ..schemas import (
     AssetDetail,
     AssetExternalCreate,
@@ -49,6 +50,7 @@ INLINE_TEXT_LIMIT = 50 * 1024**2  # 50MB 以下走内存并抽取文本
 
 EXT_CONTENT_TYPE = {
     ".md": "markdown", ".markdown": "markdown",
+    ".docx": "docx",
     ".png": "image", ".jpg": "image", ".jpeg": "image",
     ".webp": "image", ".gif": "image", ".heic": "image",
     ".mov": "video", ".mp4": "video",
@@ -67,10 +69,10 @@ def content_type_for(file_name: str) -> str:
 
 async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
                        content_type: str) -> str | None:
-    """小文件入内存并返回文本（仅 markdown）；大文件 spool 流式；超 2GB 拒绝。
+    """小文件入内存并返回文本（markdown/docx）；大文件 spool 流式；超 2GB 拒绝。
 
     UploadFile 已在磁盘 spill：读头部判定大小，小文件进内存并抽文本，
-    大文件 spool 流式上传。返回抽取的文本（markdown），其余返回 None；
+    大文件 spool 流式上传。返回抽取的文本（markdown/docx），其余返回 None；
     超 2GB 抛 413（调用方须 rollback 后 re-raise）。
     """
     data = await file.read(INLINE_TEXT_LIMIT + 1)
@@ -78,6 +80,8 @@ async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
         storage.put(zone, key, data, file.content_type or "application/octet-stream")
         if content_type == "markdown":
             return data.decode("utf-8", errors="ignore")
+        if content_type == "docx":
+            return docx_text.extract_text(data)
         return None
     with tempfile.SpooledTemporaryFile(max_size=64 * 1024 * 1024) as tmp:
         tmp.write(data)

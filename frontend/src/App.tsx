@@ -210,7 +210,7 @@ function Assets() {
             if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
             const a = await uploadAsset(upZone, upTitle, upFile);
             const unlock =
-              a.content_type === "markdown" ? "定稿后可生成文本变体，派生口播稿后可出语音包"
+              ["markdown", "docx"].includes(a.content_type) ? "定稿后可生成文本变体，派生口播稿后可出语音包"
               : a.content_type === "image" ? "定稿后可用「渲染封面」按平台出图"
               : "文件已归档；成品建议在母版详情里以「派生发布物」登记";
             setUpResult(`✓ 已入库为 ${ZONE_LABELS[a.zone]}·${STATUS_LABELS[a.status]}（${a.content_type}）——${unlock}`);

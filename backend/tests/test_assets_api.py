@@ -98,3 +98,22 @@ def test_delete_asset(client):
     asset_id = create.json()["id"]
     assert client.delete(f"/api/assets/{asset_id}").status_code == 204
     assert client.get(f"/api/assets/{asset_id}").status_code == 404
+
+
+def test_upload_docx_extracts_text(client):
+    from io import BytesIO
+    from docx import Document
+    buf = BytesIO()
+    doc = Document()
+    doc.add_paragraph("第一段：途虎学什么。")
+    doc.add_paragraph("第二段：供应链视角。")
+    doc.save(buf)
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "Word 稿"},
+        files={"file": ("途虎.docx", buf.getvalue(),
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["content_type"] == "docx"
+    assert "第二段：供应链视角。" in body["text_content"]
