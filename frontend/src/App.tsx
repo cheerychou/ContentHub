@@ -87,6 +87,12 @@ function primaryTask(d: AssetDetail): string | null {
   return null; // source
 }
 
+// 状态快捷筛选 chips：全部 + 五个状态（label 复用 STATUS_LABELS，与表格状态列一致）
+const STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: "", label: "全部" },
+  ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
+];
+
 function useHashRoute(): string {
   const [route, setRoute] = useState(location.hash);
   useEffect(() => {
@@ -124,6 +130,7 @@ export default function App() {
 function Assets() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [zone, setZone] = useState<string>("");
+  const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const [error, setError] = useState("");
@@ -168,12 +175,12 @@ function Assets() {
 
   const refresh = useCallback(async () => {
     try {
-      setAssets(await listAssets({ zone, q }));
+      setAssets(await listAssets({ zone, status, q }));
       setError("");
     } catch (e) {
       setError(String(e));
     }
-  }, [zone, q]);
+  }, [zone, status, q]);
 
   // 统一捕获变更类操作的异常，避免 unhandled rejection 静默失败
   const run = useCallback(async (fn: () => Promise<void>) => {
@@ -410,6 +417,25 @@ function Assets() {
         <input placeholder="搜索标题/正文…" value={q}
                onChange={(e) => setQ(e.target.value)} />
         <button onClick={() => void refresh()}>搜索</button>
+      </section>
+
+      {/* 状态快捷筛选 chips：点击即过滤并立即刷新（无需按「搜索」），可与区域/关键词叠加 */}
+      <section style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        {STATUS_FILTERS.map((f) => {
+          const active = status === f.value;
+          return (
+            <button key={f.value || "all"} onClick={() => setStatus(f.value)}
+                    style={{
+                      borderRadius: 999, padding: "4px 14px", fontSize: 14,
+                      cursor: "pointer",
+                      border: active ? "1px solid #1d6fd2" : "1px solid #bcd4ec",
+                      background: active ? "#1d6fd2" : "#fff",
+                      color: active ? "#fff" : "#1d6fd2",
+                    }}>
+              {f.label}
+            </button>
+          );
+        })}
       </section>
 
       <section style={{ border: "1px solid #ccc", padding: 12, marginBottom: 12 }}>
