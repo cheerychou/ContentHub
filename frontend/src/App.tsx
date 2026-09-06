@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
   fetchPlatformMeta, linkDerivation, listAssets, listRecipes, patchStatus,
@@ -48,6 +48,43 @@ function nextStepHint(d: AssetDetail): string {
   if (d.status === "publishing")
     return "发布完成了吗？→ 下方填入平台链接完成登记（登记后状态可点「已发布」收口）。";
   return "已登记发布 ✓。全流程完成。";
+}
+
+// 任务区主按钮 / 主 CTA（定稿、下载语音包）
+const PRIMARY_BTN: CSSProperties = {
+  background: "#1d6fd2", color: "#fff", border: "none", borderRadius: 6,
+  padding: "10px 24px", fontSize: 16, cursor: "pointer",
+};
+const PRIMARY_LINK: CSSProperties = {
+  display: "inline-block", background: "#1d6fd2", color: "#fff",
+  borderRadius: 6, padding: "10px 24px", fontSize: 16,
+  textDecoration: "none", cursor: "pointer",
+};
+
+// 主任务选择（纯函数）：返回当前资产最该做的事，null 表示无主任务（只看指引与血缘）
+// 主任务在「任务区」默认展开；其余能力一律收进「更多操作」，不删除任何功能。
+function primaryTask(d: AssetDetail): string | null {
+  if (d.zone === "master") {
+    if (d.content_type === "image") {
+      if (d.status === "finalized") return "master_image_finalized";
+      if (d.status === "topic" || d.status === "drafting")
+        return "master_image_drafting";
+      return null; // publishing / published：渲染封面移入更多操作
+    }
+    if (d.status === "topic" || d.status === "drafting")
+      return "master_text_drafting";
+    if (d.status === "finalized") return "master_text_finalized";
+    return null; // publishing / published：文本变体移入更多操作
+  }
+  if (d.zone === "publish") {
+    if (d.meta?.kind === "video_kit") return d.file_url ? "video_kit" : null;
+    // 文本发布物（口播稿）：派生创建即 publishing，出语音包是当前任务，直到已发布
+    if (d.content_type === "markdown")
+      return d.status === "published" ? null : "publish_markdown";
+    if (d.status === "publishing") return "publish_publishing";
+    return null; // 已发布/未到发布中的非 markdown：发布登记移入更多操作
+  }
+  return null; // source
 }
 
 function useHashRoute(): string {
@@ -162,6 +199,187 @@ function Assets() {
   const voiceNames = Object.keys(platformMeta?.voices ?? {});
   const voiceOptions = voiceNames.length > 0 ? voiceNames : [vkVoice];
 
+  const task = detail ? primaryTask(detail) : null;
+
+  // —— 表单渲染助手：同一表单可能出现在任务区或更多操作，抽成函数避免重复 JSX ——
+  // 全部沿用原有提交逻辑与 run 错误处理，仅移动 DOM 位置。
+  const renderDeriveForm = (d: AssetDetail) => (
+    <div>
+      <h3>派生发布物</h3>
+      <p style={{ color: "#888", margin: "4px 0" }}>
+        用于登记<strong>已做好的成品文件</strong>（如剪映导出的成片、别处做好的版本）。
+        要自动生成封面 → 请先上传图片母版，用它的「渲染封面」。
+      </p>
+      <select value={dvPlatform} onChange={(e) => setDvPlatform(e.target.value)}>
+        {["微信公众号", "抖音", "微信视频号", "哔哩哔哩", "官网"].map((p) =>
+          <option key={p}>{p}</option>)}
+      </select>
+      <input placeholder="发布物标题" value={dvTitle}
+             onChange={(e) => setDvTitle(e.target.value)} />
+      <input type="file" onChange={(e) => setDvFile(e.target.files?.[0] ?? null)} />
+      <button onClick={() => void run(async () => {
+        if (!dvFile || !dvTitle) return;
+        await derive(d.id, dvTitle, dvPlatform, dvFile);
+        setDvTitle(""); setDvFile(null);
+        setDetail(await getAsset(d.id)); void refresh();
+      })}>派生</button>
+    </div>
+  );
+
+  const renderCoverForm = (d: AssetDetail, showDraftNote: boolean) => (
+    <div>
+      <h3>渲染封面</h3>
+      {showDraftNote && (
+        <p style={{ color: "#b26b00", margin: "4px 0" }}>建议先定稿，再按平台出图。</p>
+      )}
+      <select value={rcPlatform} onChange={(e) => setRcPlatform(e.target.value)}>
+        {coverPlatforms.map((p) => <option key={p}>{p}</option>)}
+      </select>
+      <select value={rcRecipeId} onChange={(e) => setRcRecipeId(e.target.value)}>
+        <option value="">选择封面模板…</option>
+        {coverRecipes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+      </select>
+      <input placeholder="标题" value={rcTitle}
+             onChange={(e) => setRcTitle(e.target.value)} />
+      <input placeholder="副标题（可选）" value={rcSubtitle}
+             onChange={(e) => setRcSubtitle(e.target.value)} />
+      <input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
+             onChange={(e) => setRcSpec(e.target.value)} />
+      <button onClick={() => void run(async () => {
+        if (!rcRecipeId || !rcTitle) return;
+        let spec: Record<string, unknown> | undefined;
+        if (rcSpec.trim()) spec = JSON.parse(rcSpec);
+        await renderCover(d.id, rcRecipeId, rcPlatform, rcTitle,
+          rcSubtitle || undefined, spec);
+        setRcTitle(""); setRcSubtitle(""); setRcSpec("");
+        setDetail(await getAsset(d.id)); void refresh();
+      })}>渲染</button>
+    </div>
+  );
+
+  const renderTextVariantForm = (d: AssetDetail) => (
+    <div>
+      <h3>文本变体</h3>
+      <select value={dtRecipeId} onChange={(e) => setDtRecipeId(e.target.value)}>
+        <option value="">选择提示词配方…</option>
+        {textRecipes.map((r) =>
+          <option key={r.id} value={r.id}>
+            {r.name}（{RECIPE_KIND_LABELS[r.kind]}）
+          </option>)}
+      </select>
+      <input placeholder="变体标题" value={dtTitle}
+             onChange={(e) => setDtTitle(e.target.value)} />
+      <textarea placeholder="附加指令（可选）" value={dtInstructions}
+                onChange={(e) => setDtInstructions(e.target.value)} rows={2}
+                style={{ width: "100%", boxSizing: "border-box", marginTop: 4 }} />
+      <button onClick={() => void run(async () => {
+        if (!dtRecipeId || !dtTitle) return;
+        await deriveText(d.id, dtRecipeId, dtTitle, dtInstructions || undefined);
+        setDtTitle(""); setDtInstructions("");
+        setDetail(await getAsset(d.id)); void refresh();
+      })}>生成变体</button>
+    </div>
+  );
+
+  const renderVideoKitForm = (d: AssetDetail) => (
+    <div>
+      <h3>生成视频语音包</h3>
+      <select value={vkVoice} onChange={(e) => setVkVoice(e.target.value)}>
+        {voiceOptions.map((v) => <option key={v}>{v}</option>)}
+      </select>
+      <input placeholder="语音包标题（可选）" value={vkTitle}
+             onChange={(e) => setVkTitle(e.target.value)} />
+      <button onClick={() => void run(async () => {
+        await deriveVideoKit(d.id, vkVoice, vkTitle || undefined);
+        setVkTitle("");
+        setDetail(await getAsset(d.id)); void refresh();
+      })}>生成语音包</button>
+    </div>
+  );
+
+  const renderPublishRegForm = (d: AssetDetail) => (
+    <div>
+      <h3>发布登记</h3>
+      {d.published_url ? (
+        <p>
+          已登记：<a href={d.published_url}>{d.published_url}</a>
+          {d.published_at && <>（{d.published_at.slice(0, 10)}）</>}
+        </p>
+      ) : <p>未登记发布链接</p>}
+      {typeof d.meta?.platform === "string"
+        && entryUrls[d.meta.platform.split("·")[0]] && (
+        <p>
+          <a href={entryUrls[d.meta.platform.split("·")[0]]}
+             target="_blank" rel="noreferrer">
+            打开平台上传页（{d.meta.platform}）
+          </a>
+        </p>
+      )}
+      <input placeholder="https://… 发布链接" value={pubUrl}
+             onChange={(e) => setPubUrl(e.target.value)} />
+      <button onClick={() => void run(async () => {
+        if (!pubUrl) return;
+        await publishInfo(d.id, pubUrl);
+        setDetail(await getAsset(d.id)); void refresh();
+      })}>登记</button>
+      {d.published_url && (
+        <button onClick={() => void run(async () => {
+          await clearPublishInfo(d.id);
+          setPubUrl(""); setDetail(await getAsset(d.id)); void refresh();
+        })}>清除</button>
+      )}
+    </div>
+  );
+
+  // 任务区：按 primaryTask 渲染唯一展开的主任务
+  const renderTask = (key: string | null) => {
+    const d = detail;
+    if (!d || !key) return null;
+    switch (key) {
+      case "master_text_drafting":
+        return (
+          <div>
+            <button style={PRIMARY_BTN} onClick={() => void run(async () => {
+              await patchStatus(d.id, "finalized");
+              setDetail(await getAsset(d.id)); void refresh();
+            })}>定稿</button>
+            <p style={{ color: "#5a7396", margin: "8px 0 0" }}>
+              定稿后解锁文本变体与语音包
+            </p>
+          </div>
+        );
+      case "master_text_finalized":
+        return d.text_content ? renderTextVariantForm(d) : null;
+      case "master_image_finalized":
+        return renderCoverForm(d, false);
+      case "master_image_drafting":
+        return renderCoverForm(d, true); // 未定稿先提示
+      case "publish_markdown":
+        return d.text_content ? renderVideoKitForm(d) : null;
+      case "publish_publishing":
+        return renderPublishRegForm(d);
+      case "video_kit":
+        return (
+          <div>
+            <h3>视频语音包</h3>
+            <p style={{ margin: "4px 0" }}>
+              音色：{typeof d.meta.voice === "string" ? d.meta.voice : "—"}
+              {typeof d.meta.sentences === "number"
+                && <> · 分句 {d.meta.sentences} 句</>}
+            </p>
+            {d.file_url && (
+              <a href={d.file_url} download style={PRIMARY_LINK}>
+                下载语音包（zip：音频 + SRT 字幕 + 素材清单）
+              </a>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+  const taskNode = renderTask(task);
+
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
       <h1>ContentHub · 资产底座</h1>
@@ -265,94 +483,14 @@ function Assets() {
             {detail.file_url && <> · <a href={detail.file_url}>文件</a></>}
           </p>
 
-          <div>
-            状态流转：
-            {TRANSITIONS[detail.status].map((s) => (
-              <button key={s} onClick={() => void run(async () => {
-                await patchStatus(detail.id, s);
-                setDetail(await getAsset(detail.id)); void refresh();
-              })}>{STATUS_LABELS[s]}</button>
-            ))}
-          </div>
-
-          {detail.zone === "master" && (
-            <div style={{ marginTop: 8 }}>
-              <h3>派生发布物</h3>
-              <p style={{ color: "#888", margin: "4px 0" }}>
-                用于登记<strong>已做好的成品文件</strong>（如剪映导出的成片、别处做好的版本）。
-                要自动生成封面 → 请先上传图片母版，用它的「渲染封面」。
-              </p>
-              <select value={dvPlatform} onChange={(e) => setDvPlatform(e.target.value)}>
-                {["微信公众号", "抖音", "微信视频号", "哔哩哔哩", "官网"].map((p) =>
-                  <option key={p}>{p}</option>)}
-              </select>
-              <input placeholder="发布物标题" value={dvTitle}
-                     onChange={(e) => setDvTitle(e.target.value)} />
-              <input type="file" onChange={(e) => setDvFile(e.target.files?.[0] ?? null)} />
-              <button onClick={() => void run(async () => {
-                if (!dvFile || !dvTitle) return;
-                await derive(detail.id, dvTitle, dvPlatform, dvFile);
-                setDvTitle(""); setDvFile(null);
-                setDetail(await getAsset(detail.id)); void refresh();
-              })}>派生</button>
-            </div>
-          )}
-
-          {detail.zone === "master" && detail.content_type !== "image" && (
-            <p style={{ color: "#888", marginTop: 8 }}>
-              渲染封面需要图片底图：请先上传一张封面底图（图片文件）作为母版，再在它的详情里选平台渲染。
-            </p>
-          )}
-
-          {detail.zone === "master" && detail.content_type === "image" && (
-            <div style={{ marginTop: 8 }}>
-              <h3>渲染封面</h3>
-              <select value={rcPlatform} onChange={(e) => setRcPlatform(e.target.value)}>
-                {coverPlatforms.map((p) => <option key={p}>{p}</option>)}
-              </select>
-              <select value={rcRecipeId} onChange={(e) => setRcRecipeId(e.target.value)}>
-                <option value="">选择封面模板…</option>
-                {coverRecipes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-              <input placeholder="标题" value={rcTitle}
-                     onChange={(e) => setRcTitle(e.target.value)} />
-              <input placeholder="副标题（可选）" value={rcSubtitle}
-                     onChange={(e) => setRcSubtitle(e.target.value)} />
-              <input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
-                     onChange={(e) => setRcSpec(e.target.value)} />
-              <button onClick={() => void run(async () => {
-                if (!rcRecipeId || !rcTitle) return;
-                let spec: Record<string, unknown> | undefined;
-                if (rcSpec.trim()) spec = JSON.parse(rcSpec);
-                await renderCover(detail.id, rcRecipeId, rcPlatform, rcTitle,
-                  rcSubtitle || undefined, spec);
-                setRcTitle(""); setRcSubtitle(""); setRcSpec("");
-                setDetail(await getAsset(detail.id)); void refresh();
-              })}>渲染</button>
-            </div>
-          )}
-
-          {detail.zone === "master" && detail.text_content && (
-            <div style={{ marginTop: 8 }}>
-              <h3>文本变体</h3>
-              <select value={dtRecipeId} onChange={(e) => setDtRecipeId(e.target.value)}>
-                <option value="">选择提示词配方…</option>
-                {textRecipes.map((r) =>
-                  <option key={r.id} value={r.id}>
-                    {r.name}（{RECIPE_KIND_LABELS[r.kind]}）
-                  </option>)}
-              </select>
-              <input placeholder="变体标题" value={dtTitle}
-                     onChange={(e) => setDtTitle(e.target.value)} />
-              <textarea placeholder="附加指令（可选）" value={dtInstructions}
-                        onChange={(e) => setDtInstructions(e.target.value)} rows={2}
-                        style={{ width: "100%", boxSizing: "border-box", marginTop: 4 }} />
-              <button onClick={() => void run(async () => {
-                if (!dtRecipeId || !dtTitle) return;
-                await deriveText(detail.id, dtRecipeId, dtTitle, dtInstructions || undefined);
-                setDtTitle(""); setDtInstructions("");
-                setDetail(await getAsset(detail.id)); void refresh();
-              })}>生成变体</button>
+          {/* 任务区：主任务唯一默认展开；无主任务/无可渲染表单则不显示 */}
+          {task && taskNode && (
+            <div style={{
+              border: "1px solid #9db8d8", background: "#f5f9ff", borderRadius: 6,
+              padding: "10px 12px", margin: "8px 0 12px",
+            }}>
+              <div style={{ fontSize: 13, color: "#5a7396", marginBottom: 6 }}>当前任务</div>
+              {taskNode}
             </div>
           )}
 
@@ -366,89 +504,71 @@ function Assets() {
             </div>
           )}
 
-          {detail.zone === "publish" && detail.content_type === "markdown"
-            && detail.text_content && (
-            <div style={{ marginTop: 8 }}>
-              <h3>生成视频语音包</h3>
-              <select value={vkVoice} onChange={(e) => setVkVoice(e.target.value)}>
-                {voiceOptions.map((v) => <option key={v}>{v}</option>)}
-              </select>
-              <input placeholder="语音包标题（可选）" value={vkTitle}
-                     onChange={(e) => setVkTitle(e.target.value)} />
-              <button onClick={() => void run(async () => {
-                await deriveVideoKit(detail.id, vkVoice, vkTitle || undefined);
-                setVkTitle("");
-                setDetail(await getAsset(detail.id)); void refresh();
-              })}>生成语音包</button>
-            </div>
-          )}
-
-          {detail.content_type === "archive" && detail.meta?.kind === "video_kit"
-            && detail.file_url && (
-            <div style={{ marginTop: 8 }}>
-              <h3>视频语音包</h3>
-              <p>
-                音色：{typeof detail.meta.voice === "string" ? detail.meta.voice : "—"}
-                {typeof detail.meta.sentences === "number"
-                  && <> · 分句 {detail.meta.sentences} 句</>}
-              </p>
-              <p>
-                <a href={detail.file_url} download>
-                  下载语音包（zip：音频 + SRT 字幕 + 素材清单）
-                </a>
-              </p>
-            </div>
-          )}
-
-          {detail.zone === "publish" && (
-            <div style={{ marginTop: 8 }}>
-            <h3>发布登记</h3>
-            {detail.published_url ? (
-              <p>
-                已登记：<a href={detail.published_url}>{detail.published_url}</a>
-                {detail.published_at && <>（{detail.published_at.slice(0, 10)}）</>}
-              </p>
-            ) : <p>未登记发布链接</p>}
-            {typeof detail.meta?.platform === "string"
-              && entryUrls[detail.meta.platform.split("·")[0]] && (
-              <p>
-                <a href={entryUrls[detail.meta.platform.split("·")[0]]}
-                   target="_blank" rel="noreferrer">
-                  打开平台上传页（{detail.meta.platform}）
-                </a>
-              </p>
-            )}
-            <input placeholder="https://… 发布链接" value={pubUrl}
-                   onChange={(e) => setPubUrl(e.target.value)} />
-            <button onClick={() => void run(async () => {
-              if (!pubUrl) return;
-              await publishInfo(detail.id, pubUrl);
-              setDetail(await getAsset(detail.id)); void refresh();
-            })}>登记</button>
-            {detail.published_url && (
-              <button onClick={() => void run(async () => {
-                await clearPublishInfo(detail.id);
-                setPubUrl(""); setDetail(await getAsset(detail.id)); void refresh();
-              })}>清除</button>
-            )}
-            </div>
-          )}
-
           <div style={{ marginTop: 8 }}>
             <h3>血缘</h3>
             <p>上游：{detail.upstream.map((d) => d.source_asset_id).join("、") || "无"}</p>
             <p>下游：{detail.downstream.map((d) => d.derived_asset_id).join("、") || "无"}</p>
-            <input placeholder="补链：上游资产 UUID" value={linkSource}
-                   onChange={(e) => setLinkSource(e.target.value)} />
-            <button onClick={() => void run(async () => {
-              await linkDerivation(detail.id, linkSource);
-              setLinkSource(""); setDetail(await getAsset(detail.id));
-            })}>补链</button>
           </div>
 
-          <button style={{ marginTop: 8 }} onClick={() => void run(async () => {
-            await deleteAsset(detail.id); setDetail(null); void refresh();
-          })}>删除资产</button>
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+              更多操作（手动状态流转 / 派生发布物 / 补链 / 删除）
+            </summary>
+            <div style={{ marginTop: 8 }}>
+              <div>
+                状态流转：
+                {TRANSITIONS[detail.status].map((s) => (
+                  <button key={s} onClick={() => void run(async () => {
+                    await patchStatus(detail.id, s);
+                    setDetail(await getAsset(detail.id)); void refresh();
+                  })}>{STATUS_LABELS[s]}</button>
+                ))}
+              </div>
+
+              {detail.zone === "master" && (
+                <div style={{ marginTop: 8 }}>{renderDeriveForm(detail)}</div>
+              )}
+
+              {/* 图片母版已进入发布流程时，渲染封面不再是主任务，保留在此 */}
+              {detail.zone === "master" && detail.content_type === "image"
+                && task !== "master_image_finalized" && task !== "master_image_drafting" && (
+                <div style={{ marginTop: 8 }}>{renderCoverForm(detail, false)}</div>
+              )}
+
+              {/* 文本母版已进入发布流程时，文本变体保留在此 */}
+              {detail.zone === "master" && detail.text_content
+                && (detail.status === "publishing" || detail.status === "published") && (
+                <div style={{ marginTop: 8 }}>{renderTextVariantForm(detail)}</div>
+              )}
+
+              {/* 非「发布中」主任务的发布资产，登记/清除入口保留在此 */}
+              {detail.zone === "publish" && task !== "publish_publishing" && (
+                <div style={{ marginTop: 8 }}>{renderPublishRegForm(detail)}</div>
+              )}
+
+              {/* 已发布的文本发布物，语音包生成入口保留在此 */}
+              {detail.zone === "publish" && detail.content_type === "markdown"
+                && detail.text_content && task !== "publish_markdown" && (
+                <div style={{ marginTop: 8 }}>{renderVideoKitForm(detail)}</div>
+              )}
+
+              <div style={{ marginTop: 8 }}>
+                <h3>补链</h3>
+                <input placeholder="补链：上游资产 UUID" value={linkSource}
+                       onChange={(e) => setLinkSource(e.target.value)} />
+                <button onClick={() => void run(async () => {
+                  await linkDerivation(detail.id, linkSource);
+                  setLinkSource(""); setDetail(await getAsset(detail.id));
+                })}>补链</button>
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+                <button onClick={() => void run(async () => {
+                  await deleteAsset(detail.id); setDetail(null); void refresh();
+                })}>删除资产</button>
+              </div>
+            </div>
+          </details>
         </section>
       )}
     </main>
