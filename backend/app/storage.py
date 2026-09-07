@@ -6,7 +6,7 @@ from minio import Minio
 
 from .config import settings
 
-ZONES = ("source", "master", "publish")
+ZONES = ("source", "topic", "master", "publish")
 
 
 class ObjectStorage(Protocol):

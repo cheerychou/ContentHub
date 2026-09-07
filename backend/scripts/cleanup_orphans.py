@@ -1,6 +1,6 @@
 """孤儿对象清理：列出/删除对象存储中无任何 assets.object_key 引用的对象。
 
-逐区（source/master/publish）对比 storage 实际 key 与资产表引用，
+逐区（source/topic/master/publish）对比 storage 实际 key 与资产表引用，
 差集即孤儿（上传中断、删除资产未回收等残留）。dry-run 为默认，防误删。
 
 用法（在 backend/ 目录下）：
@@ -19,13 +19,17 @@ from app.storage import ZONES, ObjectStorage, get_storage
 
 
 def find_orphans(storage: ObjectStorage, db) -> dict[str, list[str]]:
-    """返回 {zone: [孤儿 key,...]}；key 排序保证输出/删除顺序稳定。"""
-    referenced: dict[str, set[str]] = {zone: set() for zone in ZONES}
+    """返回 {zone: [孤儿 key,...]}；key 排序保证输出/删除顺序稳定。
+
+    referenced 按资产实际 zone setdefault 构建（对 ZONES 之外/缺失的 zone 健壮），
+    遍历侧只信任 storage.ZONES，避免 DB 出现未知 zone 时 KeyError。
+    """
+    referenced: dict[str, set[str]] = {}
     for zone, key in db.execute(select(Asset.zone, Asset.object_key)).all():
         if key:
-            referenced[zone.value].add(key)
+            referenced.setdefault(zone.value, set()).add(key)
     return {
-        zone: sorted(set(storage.list_keys(zone)) - referenced[zone])
+        zone: sorted(set(storage.list_keys(zone)) - referenced.get(zone, set()))
         for zone in ZONES
     }
 

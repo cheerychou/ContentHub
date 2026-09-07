@@ -59,6 +59,34 @@ def test_upload_source_defaults_to_available(client):
     assert resp.json()["status"] == "available"
 
 
+def test_upload_topic_defaults_to_candidate(client):
+    """选题策划页直传：zone=topic 默认候选（评审修复回归）。"""
+    resp = client.post(
+        "/api/assets",
+        data={"zone": "topic", "title": "选题：途虎供应链"},
+        files=_md_file(),
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["zone"] == "topic"
+    assert body["status"] == "candidate"
+
+
+def test_get_topic_asset_detail_includes_file_url(client):
+    """topic 资产详情可取预签名 URL（storage.ZONES 缺 topic 曾致 500，评审修复回归）。"""
+    create = client.post(
+        "/api/assets",
+        data={"zone": "topic", "title": "选题：蓝鲸"},
+        files=_md_file("t.md"),
+    )
+    asset_id = create.json()["id"]
+    resp = client.get(f"/api/assets/{asset_id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["zone"] == "topic"
+    assert body["file_url"] == f"fake://topic/{asset_id}/t.md"
+
+
 def test_external_link_source(client):
     resp = client.post(
         "/api/assets/external",

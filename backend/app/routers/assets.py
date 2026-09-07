@@ -58,6 +58,7 @@ EXT_CONTENT_TYPE = {
 }
 INITIAL_STATUS = {
     AssetZone.SOURCE: AssetStatus.AVAILABLE,
+    AssetZone.TOPIC: AssetStatus.CANDIDATE,  # 选题策划页直传默认候选
     AssetZone.MASTER: AssetStatus.DRAFTING,
 }
 
