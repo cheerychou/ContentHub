@@ -255,7 +255,57 @@ ALLOWED_DERIVATION_ZONES = {
     (AssetZone.SOURCE, AssetZone.MASTER),
     (AssetZone.MASTER, AssetZone.MASTER),
     (AssetZone.MASTER, AssetZone.PUBLISH),
+    (AssetZone.TOPIC, AssetZone.SOURCE),  # M4：已立项选题产出初始文稿
 }
+
+
+@router.post("/{topic_id}/initial-draft", status_code=201, response_model=AssetDetail)
+async def create_initial_draft(
+    topic_id: uuid.UUID,
+    title: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    storage=Depends(get_storage),
+):
+    """立项初始文稿（M4）：已立项选题 → 源料区初始文稿，记录 topic→source 血缘。
+
+    守卫：仅 topic 区、且 status=approved 的选题可产出；
+    产物为 source 区 available 资产，血缘 note="立项初始文稿"。
+    """
+    topic = get_asset_or_404(db, topic_id)
+    if topic.zone != AssetZone.TOPIC:
+        raise HTTPException(422, f"仅选题可产出初始文稿，当前 zone={topic.zone.value}")
+    if topic.status != AssetStatus.APPROVED:
+        raise HTTPException(422, "仅已立项选题可产出初始文稿")
+
+    file_name = file.filename or "untitled"
+    ct = content_type_for(file_name)
+    draft = Asset(
+        zone=AssetZone.SOURCE,
+        status=INITIAL_STATUS[AssetZone.SOURCE],  # available
+        title=title,
+        file_name=file_name,
+        content_type=ct,
+        created_by=topic.created_by,
+    )
+    db.add(draft)
+    db.flush()
+    key = f"{draft.id}/{file_name}"
+    try:
+        draft.text_content = await store_upload(
+            storage, AssetZone.SOURCE, key, file, ct)
+    except HTTPException:
+        db.rollback()
+        raise
+    draft.object_key = key
+
+    db.add(Derivation(source_asset_id=topic.id, derived_asset_id=draft.id,
+                      note="立项初始文稿", created_by=topic.created_by))
+    db.commit()
+    db.refresh(draft)
+    detail = AssetDetail.model_validate(draft)
+    detail.upstream = [DerivationOut.model_validate(d) for d in draft.upstream]
+    return detail
 
 
 @router.post("/{master_id}/derive", status_code=201, response_model=AssetDetail)
