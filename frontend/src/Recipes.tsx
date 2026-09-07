@@ -34,7 +34,7 @@ export default function Recipes() {
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
-      <h1>ContentHub · 配方管理</h1>
+      <h1>ContentHub · 提示词与模板</h1>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       <section style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -46,7 +46,7 @@ export default function Recipes() {
       </section>
 
       <section style={{ border: "1px solid #ccc", padding: 12, marginBottom: 12 }}>
-        <h2>新建配方</h2>
+        <h2>新建模板/提示词</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           <select value={nkKind} onChange={(e) => setNkKind(e.target.value as RecipeKind)}>
             {KINDS.map((k) => <option key={k} value={k}>{RECIPE_KIND_LABELS[k]}</option>)}
@@ -55,7 +55,7 @@ export default function Recipes() {
           <input placeholder="描述（可选）" value={nkDesc}
                  onChange={(e) => setNkDesc(e.target.value)} style={{ flexGrow: 1 }} />
         </div>
-        <textarea placeholder="配方内容（模板 / 提示词，支持 {title} 等占位符）"
+        <textarea placeholder="模板 / 提示词内容（支持 {title} 等占位符）"
                   value={nkContent} onChange={(e) => setNkContent(e.target.value)}
                   rows={5} style={{ width: "100%", boxSizing: "border-box" }} />
         <div style={{ marginTop: 8 }}>

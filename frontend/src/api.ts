@@ -99,7 +99,7 @@ export async function deleteAsset(id: string): Promise<void> {
 export async function listRecipes(kind?: string): Promise<Recipe[]> {
   const qs = kind ? `?kind=${encodeURIComponent(kind)}` : "";
   const resp = await fetch(`${base}/recipes${qs}`);
-  if (!resp.ok) throw new Error(`配方列表失败 ${resp.status}`);
+  if (!resp.ok) throw new Error(`模板/提示词列表失败 ${resp.status}`);
   return resp.json();
 }
 
@@ -129,7 +129,7 @@ export async function updateRecipe(
 
 export async function deleteRecipe(id: string): Promise<void> {
   const resp = await fetch(`${base}/recipes/${seg(id)}`, { method: "DELETE" });
-  if (!resp.ok) throw new Error("删除配方失败");
+  if (!resp.ok) throw new Error("删除模板/提示词失败");
 }
 
 export async function renderCover(

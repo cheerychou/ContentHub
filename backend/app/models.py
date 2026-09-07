@@ -150,7 +150,7 @@ class Derivation(Base):
     derived_asset_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("assets.id", ondelete="CASCADE")
     )
-    recipe_ref: Mapped[str | None] = mapped_column(String(200))  # M1 配方预留
+    recipe_ref: Mapped[str | None] = mapped_column(String(200))  # M1 模板/提示词预留
     note: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str] = mapped_column(String(100), default="zhoudabo")
     # 时区感知时间列（M2 工程清偿修正，与 assets.created_at 一致）
@@ -163,8 +163,8 @@ class Derivation(Base):
 
 
 class RecipeKind(str, enum.Enum):
-    COVER_TEMPLATE = "cover_template"  # 封面模板配方
-    TEXT_PROMPT = "text_prompt"        # 文本提示词配方
+    COVER_TEMPLATE = "cover_template"  # 封面模板
+    TEXT_PROMPT = "text_prompt"        # 文本提示词
 
 
 class Recipe(Base):

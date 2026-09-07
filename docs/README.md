@@ -2,8 +2,8 @@
 title: "ContentHub 文档中心"
 category: index
 status: active
-version: 1.2
-updated_at: "2026-09-04"
+version: 1.3
+updated_at: "2026-09-05"
 ---
 
 # ContentHub 文档中心
@@ -32,7 +32,7 @@ updated_at: "2026-09-04"
 
 | 文档 | 说明 |
 |------|------|
-| [MVP建设方案](product/PRD-MVP-001-mvp-build-plan.md) | v2.0 定位定稿重写：配方派生引擎优先，Web 自托管（M0-M2） |
+| [MVP建设方案](product/PRD-MVP-001-mvp-build-plan.md) | v2.0 定位定稿重写：模板与提示词派生引擎优先，Web 自托管（M0-M2） |
 
 ### 🧠 知识经验 `knowledge/`
 

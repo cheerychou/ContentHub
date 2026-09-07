@@ -128,7 +128,7 @@ function Nav({ route }: { route: string }) {
         <NavItem key={s.hash} href={s.hash} label={`${s.icon} ${s.label}`}
                  active={route.startsWith(s.hash)} />
       ))}
-      <NavItem href="#/recipes" label="⚙️ 配方" active={route.startsWith("#/recipes")} />
+      <NavItem href="#/recipes" label="⚙️ 提示词与模板" active={route.startsWith("#/recipes")} />
     </nav>
   );
 }
@@ -194,7 +194,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const [dtRecipeId, setDtRecipeId] = useState("");
   const [dtTitle, setDtTitle] = useState("");
   const [dtInstructions, setDtInstructions] = useState("");
-  // 配方缓存
+  // 模板与提示词缓存
   const [coverRecipes, setCoverRecipes] = useState<Recipe[]>([]);
   const [textRecipes, setTextRecipes] = useState<Recipe[]>([]);
   // 发布登记
@@ -310,7 +310,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     <div>
       <h3>文本变体</h3>
       <select value={dtRecipeId} onChange={(e) => setDtRecipeId(e.target.value)}>
-        <option value="">选择提示词配方…</option>
+        <option value="">选择提示词…</option>
         {textRecipes.map((r) =>
           <option key={r.id} value={r.id}>
             {r.name}（{RECIPE_KIND_LABELS[r.kind]}）

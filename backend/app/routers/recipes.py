@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 def get_recipe_or_404(db: Session, recipe_id: uuid.UUID) -> Recipe:
     recipe = db.get(Recipe, recipe_id)
     if recipe is None:
-        raise HTTPException(404, f"配方不存在：{recipe_id}")
+        raise HTTPException(404, f"模板/提示词不存在：{recipe_id}")
     return recipe
 
 
@@ -34,7 +34,7 @@ def create_recipe(body: RecipeCreate, db: Session = Depends(get_db)):
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, f"配方名已存在：{body.name}")
+        raise HTTPException(409, f"名称已存在：{body.name}")
     db.refresh(recipe)
     return recipe
 
@@ -63,7 +63,7 @@ def update_recipe(recipe_id: uuid.UUID, body: RecipeUpdate,
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, f"配方名已存在：{data.get('name')}")
+        raise HTTPException(409, f"名称已存在：{data.get('name')}")
     db.refresh(recipe)
     return recipe
 

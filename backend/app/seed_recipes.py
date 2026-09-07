@@ -1,4 +1,4 @@
-"""默认配方种子：幂等，按 name 查在则跳。seed(db) 返回新增条数。
+"""默认模板与提示词种子：幂等，按 name 查在则跳。seed(db) 返回新增条数。
 
 运行：python -m app.seed_recipes
 """
@@ -96,7 +96,7 @@ SEEDS = [
 
 
 def seed(db: Session) -> int:
-    """写入默认配方；按 name 已存在则跳过。返回新增条数。"""
+    """写入默认模板与提示词；按 name 已存在则跳过。返回新增条数。"""
     created = 0
     for item in SEEDS:
         exists = db.query(Recipe).filter_by(name=item["name"]).first()

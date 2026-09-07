@@ -400,7 +400,7 @@ def render_cover_for_master(
         raise HTTPException(422, "封面渲染的母版必须是已上传图片资产")
     recipe = db.get(Recipe, recipe_id)
     if recipe is None or recipe.kind != RecipeKind.COVER_TEMPLATE:
-        raise HTTPException(404, "封面模板配方不存在")
+        raise HTTPException(404, "封面模板不存在")
     if platform not in COVER_SPECS:
         raise HTTPException(422, f"未知平台 {platform}；可选 {sorted(COVER_SPECS)}")
 
@@ -464,7 +464,7 @@ def derive_text_for_master(
         raise HTTPException(422, "母版缺少正文 text_content，无法派生文本变体")
     recipe = db.get(Recipe, body.recipe_id)
     if recipe is None or recipe.kind != RecipeKind.TEXT_PROMPT:
-        raise HTTPException(404, "文本提示词配方不存在")
+        raise HTTPException(404, "提示词不存在")
 
     system = recipe.content.replace("【母版正文】", master.text_content)
     for k, v in body.params.items():

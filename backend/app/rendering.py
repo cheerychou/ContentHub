@@ -4,7 +4,7 @@ from pathlib import Path
 
 from jinja2.sandbox import SandboxedEnvironment
 
-# 沙箱环境：配方内容视为不可信模板源，禁止访问对象属性/危险调用（防 SSTI）
+# 沙箱环境：模板/提示词内容视为不可信来源，禁止访问对象属性/危险调用（防 SSTI）
 _env = SandboxedEnvironment()
 
 

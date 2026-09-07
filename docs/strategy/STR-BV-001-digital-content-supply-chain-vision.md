@@ -4,11 +4,11 @@ title: 企业级数字内容供应链系统(A-DCSC) 愿景与项目章程
 category: STR
 domain: BV
 status: active
-version: 1.2
+version: 1.3
 doc_type: charter
 author: zhoudabo
 created_at: 2026-09-03
-updated_at: 2026-09-04
+updated_at: 2026-09-05
 tags: [A-DCSC, vision, charter, content-supply-chain]
 related: [FND-GOV-001, PRD-MVP-001, KNW-EXP-001]
 ---
@@ -123,7 +123,7 @@ related: [FND-GOV-001, PRD-MVP-001, KNW-EXP-001]
 
 ### 8.1 定位声明
 
-> **ContentHub（A-DCSC）是面向 B2B 企业的内容供应链系统：让企业以"一份源资产 + 一套配方"的方式，管理从选题研究到多平台发布的内容全链路——单人可用、团队可扩展、生态可对接。**
+> **ContentHub（A-DCSC）是面向 B2B 企业的内容供应链系统：让企业以"一份源资产 + 一套模板/提示词"的方式，管理从选题研究到多平台发布的内容全链路——单人可用、团队可扩展、生态可对接。**
 
 ### 8.2 第一用户与证据
 
@@ -135,12 +135,12 @@ related: [FND-GOV-001, PRD-MVP-001, KNW-EXP-001]
 2. **生态对接**（M2）：成为 CDD3 营销中心的上游——总部内容包下发至连锁门店（对接 MK-005 Phase 3 语义）；
 3. **独立产品化**：汽车后市场 B2B 内容营销 SaaS——自有行业内容已建立的心智是天然冷启动资产。
 
-交付形态与技术边界见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md)（Web 自托管、配方派生引擎优先、自动化红线）；跨项目自动化教训见 [KNW-EXP-001](../knowledge/KNW-EXP-001-content-supply-chain-lessons.md)。
+交付形态与技术边界见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md)（Web 自托管、模板与提示词派生引擎优先、自动化红线）；跨项目自动化教训见 [KNW-EXP-001](../knowledge/KNW-EXP-001-content-supply-chain-lessons.md)。
 
 ## 9. 遗留问题与后续事项
 
 1.  ~~**技术选型**：底层对象存储选型~~ → **已解决**：MVP 采用 MinIO（开源、S3 兼容），见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md)；向量数据库选型留待三期。
-2.  ~~**落地实施**：MVP 如何用开源软件快速搭建"三态分离"的血缘库~~ → **已解决**：见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md)（轻量栈 FastAPI + PostgreSQL + MinIO，血缘以配方生成关系表达）。
+2.  ~~**落地实施**：MVP 如何用开源软件快速搭建"三态分离"的血缘库~~ → **已解决**：见 [PRD-MVP-001](../product/PRD-MVP-001-mvp-build-plan.md)（轻量栈 FastAPI + PostgreSQL + MinIO，血缘以模板/提示词生成关系表达）。
 3.  ~~**行业选择**：哪些垂直行业付费意愿最迫切~~ → **已收敛**（2026-09-04）：采用自有场景先行路径，垂直行业 = 汽车后市场（自有场景即样本）；产品化阶段的细分客户画像在 M1 验证后细化。
 
 ## 相关文档
@@ -156,3 +156,4 @@ related: [FND-GOV-001, PRD-MVP-001, KNW-EXP-001]
 | 1.0 | 2026-09-03 | 由《数字内容供应链系统(讨论纪要)》蒸馏为愿景与章程文档 | zhoudabo |
 | 1.1 | 2026-09-04 | §8 遗留问题与 PRD 对齐（选型/落地已解决）；移除归档目录引用 | zhoudabo |
 | 1.2 | 2026-09-04 | 新增 §8 产品定位定稿（自有场景先行 + 三级商业路径），遗留问题移至 §9 并全部收敛 | zhoudabo |
+| 1.3 | 2026-09-05 | 词汇统一：废弃伞形词，按类型命名封面模板/提示词 | zhoudabo |

@@ -80,7 +80,7 @@ export interface Recipe {
 
 export const RECIPE_KIND_LABELS: Record<RecipeKind, string> = {
   cover_template: "封面模板",
-  text_prompt: "文本提示词",
+  text_prompt: "提示词",
 };
 
 // 平台常量（发布页 URL / 封面规格 / 音色）不再前端硬编码：
