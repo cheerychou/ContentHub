@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
-  fetchPlatformMeta, linkDerivation, listAssets, listRecipes, patchStatus,
-  publishInfo, renderCover, uploadAsset, type PlatformMeta,
+  fetchPlatformMeta, initialDraft, linkDerivation, listAssets, listRecipes,
+  patchStatus, publishInfo, renderCover, uploadAsset, type PlatformMeta,
 } from "./api";
 import {
   RECIPE_KIND_LABELS, STATUS_LABELS, ZONE_LABELS, ZONE_STATUSES,
@@ -89,7 +89,13 @@ function primaryTask(d: AssetDetail): string | null {
     if (d.status === "publishing") return "publish_publishing";
     return null; // 已发布/未到发布中的非 markdown：发布登记移入更多操作
   }
-  return null; // topic / source：topic 动作表单由 Task 4 接线，暂无主任务
+  if (d.zone === "topic") {
+    // 候选/调研中/已立项/已搁置 → 阶段推进任务（按钮或产出文稿表单，见 renderTask）
+    if (["candidate", "researching", "approved", "shelved"].includes(d.status))
+      return "topic_stage";
+    return null; // available 等：选题区无该状态
+  }
+  return null; // source：素材（底片）无主任务，看指引与血缘即可
 }
 
 function useHashRoute(): string {
@@ -198,6 +204,9 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   // 视频语音包表单
   const [vkVoice, setVkVoice] = useState("晓晓（女）");
   const [vkTitle, setVkTitle] = useState("");
+  // 产出初始文稿表单（已立项选题）
+  const [idTitle, setIdTitle] = useState("");
+  const [idFile, setIdFile] = useState<File | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -337,6 +346,31 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     </div>
   );
 
+  // 产出初始文稿表单（已立项选题 → 源料区 available 文稿，后端记 topic→source 血缘）
+  const renderInitialDraftForm = (d: AssetDetail) => (
+    <div>
+      <h3>产出初始文稿</h3>
+      <input placeholder="文稿标题" value={idTitle}
+             onChange={(e) => setIdTitle(e.target.value)} />
+      <input type="file" accept=".md,.docx"
+             onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
+      <button
+        disabled={!idFile || !idTitle}
+        title={!idFile || !idTitle ? "请先填写标题并选择 md/docx 文件" : undefined}
+        style={{ opacity: !idFile || !idTitle ? 0.5 : 1 }}
+        onClick={() => void run(async () => {
+          if (!idFile) return; // 按钮已 disabled，此处仅为类型收窄
+          await initialDraft(d.id, idTitle, idFile);
+          setIdTitle(""); setIdFile(null);
+          setDetail(await getAsset(d.id)); void refresh();
+        })}
+      >产出文稿</button>
+      <p style={{ color: "#5a7396", margin: "8px 0 0" }}>
+        文稿将入素材库并记录与本选题的血缘
+      </p>
+    </div>
+  );
+
   const renderPublishRegForm = (d: AssetDetail) => (
     <div>
       <h3>发布登记</h3>
@@ -414,6 +448,36 @@ function Assets({ stageZone }: { stageZone: Zone }) {
             )}
           </div>
         );
+      case "topic_stage": {
+        // 选题阶段推进（与后端 topic 状态机一致：candidate→researching→approved；shelved↔candidate）
+        if (d.status === "candidate" || d.status === "researching") {
+          const next = d.status === "candidate" ? "researching" : "approved";
+          return (
+            <div>
+              <button style={PRIMARY_BTN} onClick={() => void run(async () => {
+                await patchStatus(d.id, next);
+                setDetail(await getAsset(d.id)); void refresh();
+              })}>{d.status === "candidate" ? "推进到调研中" : "已立项"}</button>
+              <button style={{ marginLeft: 8 }} onClick={() => void run(async () => {
+                await patchStatus(d.id, "shelved");
+                setDetail(await getAsset(d.id)); void refresh();
+              })}>搁置</button>
+            </div>
+          );
+        }
+        if (d.status === "approved") return renderInitialDraftForm(d);
+        if (d.status === "shelved") {
+          return (
+            <div>
+              <button style={PRIMARY_BTN} onClick={() => void run(async () => {
+                await patchStatus(d.id, "candidate");
+                setDetail(await getAsset(d.id)); void refresh();
+              })}>重启为候选</button>
+            </div>
+          );
+        }
+        return null;
+      }
       default:
         return null;
     }

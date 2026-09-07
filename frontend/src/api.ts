@@ -48,6 +48,20 @@ export async function patchStatus(id: string, status: string): Promise<Asset> {
   return resp.json();
 }
 
+// 立项初始文稿（M4）：已立项选题 → 源料区 available 文稿（后端记录 topic→source 血缘）
+export async function initialDraft(
+  topicId: string, title: string, file: File
+): Promise<AssetDetail> {
+  const form = new FormData();
+  form.append("title", title);
+  form.append("file", file);
+  const resp = await fetch(`${base}/assets/${topicId}/initial-draft`, {
+    method: "POST", body: form,
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
 export async function derive(
   masterId: string, title: string, platform: string, file: File
 ): Promise<AssetDetail> {
