@@ -578,6 +578,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
               const d = await getAsset(a.id);
               setDetail(d);
               setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
+              setIdTitle(""); setIdFile(null);  // 同理重置初始文稿表单
             })}
                 style={{ cursor: "pointer", borderTop: "1px solid #eee" }}>
               <td>{a.title}</td>

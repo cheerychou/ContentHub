@@ -2,6 +2,9 @@ import type { Asset, AssetDetail, Recipe, RecipeKind } from "./types";
 
 const base = "/api";
 
+// 路径参数统一在边界编码：即使上游数据异常也不会改变请求路径结构
+const seg = (v: string | number) => encodeURIComponent(String(v));
+
 async function errDetail(resp: Response): Promise<string> {
   try { const j = await resp.json(); return typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail ?? j); }
   catch { return `请求失败 ${resp.status}`; }
@@ -19,7 +22,7 @@ export async function listAssets(params: {
 }
 
 export async function getAsset(id: string): Promise<AssetDetail> {
-  const resp = await fetch(`${base}/assets/${id}`);
+  const resp = await fetch(`${base}/assets/${seg(id)}`);
   if (!resp.ok) throw new Error(`详情失败 ${resp.status}`);
   const detail: AssetDetail = await resp.json();
   if (detail.file_url) detail.file_url = detail.file_url.replace(/^https?:\/\/minio:9000/, "/minio");
@@ -39,7 +42,7 @@ export async function uploadAsset(
 }
 
 export async function patchStatus(id: string, status: string): Promise<Asset> {
-  const resp = await fetch(`${base}/assets/${id}/status`, {
+  const resp = await fetch(`${base}/assets/${seg(id)}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
@@ -55,7 +58,7 @@ export async function initialDraft(
   const form = new FormData();
   form.append("title", title);
   form.append("file", file);
-  const resp = await fetch(`${base}/assets/${topicId}/initial-draft`, {
+  const resp = await fetch(`${base}/assets/${seg(topicId)}/initial-draft`, {
     method: "POST", body: form,
   });
   if (!resp.ok) throw new Error(await errDetail(resp));
@@ -69,7 +72,7 @@ export async function derive(
   form.append("title", title);
   form.append("platform", platform);
   form.append("file", file);
-  const resp = await fetch(`${base}/assets/${masterId}/derive`, {
+  const resp = await fetch(`${base}/assets/${seg(masterId)}/derive`, {
     method: "POST", body: form,
   });
   if (!resp.ok) throw new Error(await errDetail(resp));
@@ -79,7 +82,7 @@ export async function derive(
 export async function linkDerivation(
   derivedId: string, sourceAssetId: string
 ): Promise<void> {
-  const resp = await fetch(`${base}/assets/${derivedId}/derivations`, {
+  const resp = await fetch(`${base}/assets/${seg(derivedId)}/derivations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ source_asset_id: sourceAssetId }),
@@ -89,7 +92,7 @@ export async function linkDerivation(
 }
 
 export async function deleteAsset(id: string): Promise<void> {
-  const resp = await fetch(`${base}/assets/${id}`, { method: "DELETE" });
+  const resp = await fetch(`${base}/assets/${seg(id)}`, { method: "DELETE" });
   if (!resp.ok) throw new Error("删除失败");
 }
 
@@ -115,7 +118,7 @@ export async function createRecipe(body: {
 export async function updateRecipe(
   id: string, body: { kind?: RecipeKind; name?: string; description?: string; content?: string; meta?: Record<string, unknown> }
 ): Promise<Recipe> {
-  const resp = await fetch(`${base}/recipes/${id}`, {
+  const resp = await fetch(`${base}/recipes/${seg(id)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -125,7 +128,7 @@ export async function updateRecipe(
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
-  const resp = await fetch(`${base}/recipes/${id}`, { method: "DELETE" });
+  const resp = await fetch(`${base}/recipes/${seg(id)}`, { method: "DELETE" });
   if (!resp.ok) throw new Error("删除配方失败");
 }
 
@@ -139,7 +142,7 @@ export async function renderCover(
   form.append("title", title);
   if (subtitle) form.append("subtitle", subtitle);
   if (spec) form.append("spec", JSON.stringify(spec));
-  const resp = await fetch(`${base}/assets/${masterId}/render-cover`, {
+  const resp = await fetch(`${base}/assets/${seg(masterId)}/render-cover`, {
     method: "POST", body: form,
   });
   if (!resp.ok) throw new Error(await errDetail(resp));
@@ -149,7 +152,7 @@ export async function renderCover(
 export async function deriveText(
   masterId: string, recipeId: string, title: string, instructions?: string
 ): Promise<AssetDetail> {
-  const resp = await fetch(`${base}/assets/${masterId}/derive-text`, {
+  const resp = await fetch(`${base}/assets/${seg(masterId)}/derive-text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -162,7 +165,7 @@ export async function deriveText(
 }
 
 export async function publishInfo(id: string, publishedUrl: string): Promise<Asset> {
-  const resp = await fetch(`${base}/assets/${id}/publish-info`, {
+  const resp = await fetch(`${base}/assets/${seg(id)}/publish-info`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ published_url: publishedUrl }),
@@ -172,7 +175,7 @@ export async function publishInfo(id: string, publishedUrl: string): Promise<Ass
 }
 
 export async function clearPublishInfo(id: string): Promise<Asset> {
-  const resp = await fetch(`${base}/assets/${id}/publish-info`, {
+  const resp = await fetch(`${base}/assets/${seg(id)}/publish-info`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clear: true }),
@@ -199,7 +202,7 @@ export async function deriveVideoKit(
   const form = new FormData();
   form.append("voice", voice);
   if (title) form.append("title", title);
-  const resp = await fetch(`${base}/assets/${masterId}/derive-video-kit`, {
+  const resp = await fetch(`${base}/assets/${seg(masterId)}/derive-video-kit`, {
     method: "POST", body: form,
   });
   if (!resp.ok) throw new Error(await errDetail(resp));
