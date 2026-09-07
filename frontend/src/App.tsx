@@ -5,17 +5,29 @@ import {
   publishInfo, renderCover, uploadAsset, type PlatformMeta,
 } from "./api";
 import {
-  RECIPE_KIND_LABELS, STATUS_LABELS, TRANSITIONS,
-  ZONE_LABELS, type Asset, type AssetDetail, type Recipe, type Zone,
+  RECIPE_KIND_LABELS, STATUS_LABELS, ZONE_LABELS, ZONE_STATUSES,
+  ZONE_TRANSITIONS, type Asset, type AssetDetail, type Recipe, type Zone,
 } from "./types";
 import Recipes from "./Recipes";
 
-const ZONES: Zone[] = ["source", "master", "publish"];
+// 四阶段工作台（M4）：导航即区域选择器；STAGES 同时驱动左导航与路由解析
+const STAGES: { zone: Zone; hash: string; icon: string; label: string }[] = [
+  { zone: "source", hash: "#/source", icon: "📚", label: "素材库" },
+  { zone: "topic", hash: "#/topic", icon: "📝", label: "选题策划" },
+  { zone: "master", hash: "#/master", icon: "🎬", label: "内容制作" },
+  { zone: "publish", hash: "#/publish", icon: "📤", label: "内容发布" },
+];
 
 // 状态驱动的「下一步」指引（流程导向，降低学习成本）
 function nextStepHint(d: AssetDetail): string {
+  if (d.zone === "topic") {
+    if (d.status === "candidate") return "推进到调研中";
+    if (d.status === "researching") return "调研充分后点「已立项」";
+    if (d.status === "approved") return "用「产出初始文稿」把选题落成素材";
+    return "搁置中，可重启为候选";
+  }
   if (d.zone === "source") {
-    return "这是源料（底片），仅供引用与检索。要加工内容，请回顶部另传母版。";
+    return "素材（底片）可供制作引用。要加工内容，请到「内容制作」页另传母版。";
   }
   if (d.zone === "master") {
     if (d.content_type === "image") {
@@ -77,14 +89,8 @@ function primaryTask(d: AssetDetail): string | null {
     if (d.status === "publishing") return "publish_publishing";
     return null; // 已发布/未到发布中的非 markdown：发布登记移入更多操作
   }
-  return null; // source
+  return null; // topic / source：topic 动作表单由 Task 4 接线，暂无主任务
 }
-
-// 状态快捷筛选 chips：全部 + 五个状态（label 复用 STATUS_LABELS，与表格状态列一致）
-const STATUS_FILTERS: { value: string; label: string }[] = [
-  { value: "", label: "全部" },
-  ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
-];
 
 function useHashRoute(): string {
   const [route, setRoute] = useState(location.hash);
@@ -96,46 +102,73 @@ function useHashRoute(): string {
   return route;
 }
 
-function Nav() {
-  const link = (href: string, label: string) => (
-    <a href={href} style={{ marginRight: 12 }}>{label}</a>
-  );
+// 单条左导航项：激活态用背景色区分（效率优先，不做视觉打磨）
+function NavItem(props: { href: string; label: string; active: boolean }) {
   return (
-    <nav style={{ marginBottom: 8 }}>
-      {link("#/", "资产底座")}
-      {link("#/recipes", "配方管理")}
+    <a href={props.href} style={{
+      display: "block", padding: "8px 10px", marginBottom: 4,
+      borderRadius: 6, textDecoration: "none", fontSize: 15,
+      background: props.active ? "#1d6fd2" : "transparent",
+      color: props.active ? "#fff" : "#1d6fd2",
+      fontWeight: props.active ? 600 : 400,
+    }}>{props.label}</a>
+  );
+}
+
+function Nav({ route }: { route: string }) {
+  return (
+    <nav style={{ width: 150, flexShrink: 0, borderRight: "1px solid #ccc", padding: 12 }}>
+      {STAGES.map((s) => (
+        <NavItem key={s.hash} href={s.hash} label={`${s.icon} ${s.label}`}
+                 active={route.startsWith(s.hash)} />
+      ))}
+      <NavItem href="#/recipes" label="⚙️ 配方" active={route.startsWith("#/recipes")} />
     </nav>
   );
 }
 
 export default function App() {
   const route = useHashRoute();
+  // #/ 重定向到 #/source（默认进入素材库）
+  useEffect(() => {
+    if (route === "" || route === "#" || route === "#/") location.replace("#/source");
+  }, [route]);
+
+  const stage = STAGES.find((s) => route.startsWith(s.hash));
+  const stageZone: Zone = stage?.zone ?? "source";
+
   return (
-    <>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 16px 0" }}>
-        <Nav />
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Nav route={route} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {route.startsWith("#/recipes")
+          ? <Recipes />
+          : <Assets key={stageZone} stageZone={stageZone} />}
       </div>
-      {route.startsWith("#/recipes") ? <Recipes /> : <Assets />}
-    </>
+    </div>
   );
 }
 
-function Assets() {
+function Assets({ stageZone }: { stageZone: Zone }) {
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [zone, setZone] = useState<string>("");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const [error, setError] = useState("");
   const detailRef = useRef<HTMLElement | null>(null);
 
+  // 状态快捷筛选 chips：全部 + 本阶段词表（label 复用 STATUS_LABELS，与表格状态列一致）
+  const statusFilters: { value: string; label: string }[] = [
+    { value: "", label: "全部" },
+    ...ZONE_STATUSES[stageZone].map((s) => ({ value: s, label: STATUS_LABELS[s] })),
+  ];
+
   // 详情面板在长列表下方：打开/更新时自动滚入视野
   useEffect(() => {
     if (detail) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [detail]);
 
-  // 上传表单
-  const [upZone, setUpZone] = useState<string>("master");
+  // 上传表单（素材库/选题策划/内容制作三页显示；发布页无上传——发布物靠派生）
   const [upTitle, setUpTitle] = useState("");
   const [upFile, setUpFile] = useState<File | null>(null);
   const [upResult, setUpResult] = useState("");
@@ -168,12 +201,12 @@ function Assets() {
 
   const refresh = useCallback(async () => {
     try {
-      setAssets(await listAssets({ zone, status, q }));
+      setAssets(await listAssets({ zone: stageZone, status, q }));
       setError("");
     } catch (e) {
       setError(String(e));
     }
-  }, [zone, status, q]);
+  }, [stageZone, status, q]);
 
   // 统一捕获变更类操作的异常，避免 unhandled rejection 静默失败
   const run = useCallback(async (fn: () => Promise<void>) => {
@@ -200,6 +233,7 @@ function Assets() {
   const voiceOptions = voiceNames.length > 0 ? voiceNames : [vkVoice];
 
   const task = detail ? primaryTask(detail) : null;
+  const stageInfo = STAGES.find((s) => s.zone === stageZone);
 
   // —— 表单渲染助手：同一表单可能出现在任务区或更多操作，抽成函数避免重复 JSX ——
   // 全部沿用原有提交逻辑与 run 错误处理，仅移动 DOM 位置。
@@ -388,7 +422,7 @@ function Assets() {
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
-      <h1>ContentHub · 资产底座</h1>
+      <h1>ContentHub · {stageInfo?.label ?? ZONE_LABELS[stageZone]}</h1>
       <div style={{
         background: "#eef4fb", border: "1px solid #bcd4ec", borderRadius: 6,
         padding: "8px 12px", marginBottom: 12, fontSize: 14,
@@ -408,19 +442,16 @@ function Assets() {
       </div>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
+      {/* 阶段页固定 zone：左导航即区域选择器，列表查询强制带 zone */}
       <section style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <select value={zone} onChange={(e) => setZone(e.target.value)}>
-          <option value="">全部区域</option>
-          {ZONES.map((z) => <option key={z} value={z}>{ZONE_LABELS[z]}</option>)}
-        </select>
         <input placeholder="搜索标题/正文…" value={q}
                onChange={(e) => setQ(e.target.value)} />
         <button onClick={() => void refresh()}>搜索</button>
       </section>
 
-      {/* 状态快捷筛选 chips：点击即过滤并立即刷新（无需按「搜索」），可与区域/关键词叠加 */}
+      {/* 状态快捷筛选 chips：点击即过滤并立即刷新（无需按「搜索」），可与关键词叠加 */}
       <section style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        {STATUS_FILTERS.map((f) => {
+        {statusFilters.map((f) => {
           const active = status === f.value;
           return (
             <button key={f.value || "all"} onClick={() => setStatus(f.value)}
@@ -437,39 +468,38 @@ function Assets() {
         })}
       </section>
 
-      <section style={{ border: "1px solid #ccc", padding: 12, marginBottom: 12 }}>
-        <h2>上传资产</h2>
-        <select value={upZone} onChange={(e) => setUpZone(e.target.value)}>
-          <option value="source">源料区</option>
-          <option value="master">母版区</option>
-        </select>
-        <input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
-        <input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
-        <button
-          disabled={!upFile || !upTitle}
-          title={!upFile || !upTitle ? "请先填写标题并选择文件" : undefined}
-          style={{ opacity: !upFile || !upTitle ? 0.5 : 1 }}
-          onClick={() => void run(async () => {
-            if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
-            const a = await uploadAsset(upZone, upTitle, upFile);
-            const unlock =
-              ["markdown", "docx"].includes(a.content_type) ? "定稿后可生成文本变体，派生口播稿后可出语音包"
-              : a.content_type === "image" ? "定稿后可用「渲染封面」按平台出图"
-              : "文件已归档；成品建议在母版详情里以「派生发布物」登记";
-            setUpResult(`✓ 已入库为 ${ZONE_LABELS[a.zone]}·${STATUS_LABELS[a.status]}（${a.content_type}）——${unlock}`);
-            setUpTitle(""); setUpFile(null); void refresh();
-          })}
-        >上传</button>
-        {(!upFile || !upTitle) && (
-          <span style={{ marginLeft: 8, color: "#888" }}>填写标题并选择文件后可上传</span>
-        )}
-        {upResult && (
-          <div style={{
-            background: "#f0f7ee", border: "1px solid #c4dcc0", borderRadius: 6,
-            padding: "6px 10px", marginTop: 8, fontSize: 14,
-          }}>{upResult}</div>
-        )}
-      </section>
+      {/* 上传表单仅素材库/选题策划/内容制作三页显示；上传目标即当前阶段区 */}
+      {stageZone !== "publish" && (
+        <section style={{ border: "1px solid #ccc", padding: 12, marginBottom: 12 }}>
+          <h2>上传资产（入库到{stageInfo?.label ?? ZONE_LABELS[stageZone]}）</h2>
+          <input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
+          <input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
+          <button
+            disabled={!upFile || !upTitle}
+            title={!upFile || !upTitle ? "请先填写标题并选择文件" : undefined}
+            style={{ opacity: !upFile || !upTitle ? 0.5 : 1 }}
+            onClick={() => void run(async () => {
+              if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
+              const a = await uploadAsset(stageZone, upTitle, upFile);
+              const unlock =
+                ["markdown", "docx"].includes(a.content_type) ? "定稿后可生成文本变体，派生口播稿后可出语音包"
+                : a.content_type === "image" ? "定稿后可用「渲染封面」按平台出图"
+                : "文件已归档；成品建议在母版详情里以「派生发布物」登记";
+              setUpResult(`✓ 已入库为 ${ZONE_LABELS[a.zone]}·${STATUS_LABELS[a.status]}（${a.content_type}）——${unlock}`);
+              setUpTitle(""); setUpFile(null); void refresh();
+            })}
+          >上传</button>
+          {(!upFile || !upTitle) && (
+            <span style={{ marginLeft: 8, color: "#888" }}>填写标题并选择文件后可上传</span>
+          )}
+          {upResult && (
+            <div style={{
+              background: "#f0f7ee", border: "1px solid #c4dcc0", borderRadius: 6,
+              padding: "6px 10px", marginTop: 8, fontSize: 14,
+            }}>{upResult}</div>
+          )}
+        </section>
+      )}
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -544,7 +574,7 @@ function Assets() {
             <div style={{ marginTop: 8 }}>
               <div>
                 状态流转：
-                {TRANSITIONS[detail.status].map((s) => (
+                {(ZONE_TRANSITIONS[detail.zone]?.[detail.status] ?? []).map((s) => (
                   <button key={s} onClick={() => void run(async () => {
                     await patchStatus(detail.id, s);
                     setDetail(await getAsset(detail.id)); void refresh();

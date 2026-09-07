@@ -1,12 +1,37 @@
-export type Zone = "source" | "master" | "publish";
-export type Status = "topic" | "drafting" | "finalized" | "publishing" | "published";
+export type Zone = "source" | "topic" | "master" | "publish";
+export type Status =
+  | "available" | "candidate" | "researching" | "approved" | "shelved"
+  | "topic" | "drafting" | "finalized" | "publishing" | "published";
 
-export const TRANSITIONS: Record<Status, Status[]> = {
-  topic: ["drafting"],
-  drafting: ["finalized"],
-  finalized: ["drafting", "publishing"],
-  publishing: ["finalized", "published"],
-  published: [],
+// 与后端 models.ZONE_TRANSITIONS 对齐的各区分状态机：
+// 先按区取表，再按当前状态取合法流转；source 无状态流转。
+// master 保留 publishing/published 仅为存量已发布母版可读（无出边）。
+export const ZONE_TRANSITIONS: Record<Zone, Partial<Record<Status, Status[]>>> = {
+  topic: {
+    candidate: ["researching", "shelved"],
+    researching: ["approved", "shelved"],
+    shelved: ["candidate"],
+    approved: [],
+  },
+  source: {},
+  master: {
+    drafting: ["finalized"],
+    finalized: ["drafting"],
+    publishing: [],
+    published: [],
+  },
+  publish: {
+    publishing: ["published"],
+    published: [],
+  },
+};
+
+// 各阶段页状态 chips 词表（对应后端 models.ZONE_STATUSES）
+export const ZONE_STATUSES: Record<Zone, Status[]> = {
+  source: ["available"],
+  topic: ["candidate", "researching", "approved", "shelved"],
+  master: ["drafting", "finalized", "publishing", "published"],
+  publish: ["publishing", "published"],
 };
 
 export interface Asset {
@@ -63,11 +88,17 @@ export const RECIPE_KIND_LABELS: Record<RecipeKind, string> = {
 
 export const ZONE_LABELS: Record<Zone, string> = {
   source: "源料区",
+  topic: "选题策划",
   master: "母版区",
   publish: "发布态",
 };
 
 export const STATUS_LABELS: Record<Status, string> = {
+  available: "可用",
+  candidate: "候选",
+  researching: "调研中",
+  approved: "已立项",
+  shelved: "已搁置",
   topic: "选题",
   drafting: "创作中",
   finalized: "定稿",
