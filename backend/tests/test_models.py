@@ -9,22 +9,28 @@ from app.models import (
     Derivation,
     Recipe,
     RecipeKind,
-    TRANSITIONS,
+    ZONE_STATUSES,
+    ZONE_TRANSITIONS,
 )
 
 
-def test_transition_table_matches_prd():
-    assert TRANSITIONS[AssetStatus.TOPIC] == {AssetStatus.DRAFTING}
-    assert TRANSITIONS[AssetStatus.DRAFTING] == {AssetStatus.FINALIZED}
-    assert TRANSITIONS[AssetStatus.FINALIZED] == {
-        AssetStatus.DRAFTING,
-        AssetStatus.PUBLISHING,
-    }
-    assert TRANSITIONS[AssetStatus.PUBLISHING] == {
-        AssetStatus.FINALIZED,
-        AssetStatus.PUBLISHED,
-    }
-    assert TRANSITIONS[AssetStatus.PUBLISHED] == set()
+def test_zone_vocabularies_and_transitions():
+    assert ZONE_STATUSES[AssetZone.TOPIC] == {
+        AssetStatus.CANDIDATE, AssetStatus.RESEARCHING,
+        AssetStatus.APPROVED, AssetStatus.SHELVED}
+    assert ZONE_STATUSES[AssetZone.SOURCE] == {AssetStatus.AVAILABLE}
+    assert ZONE_TRANSITIONS[AssetZone.TOPIC][AssetStatus.CANDIDATE] == {
+        AssetStatus.RESEARCHING, AssetStatus.SHELVED}
+    assert ZONE_TRANSITIONS[AssetZone.TOPIC][AssetStatus.APPROVED] == set()
+    assert ZONE_TRANSITIONS[AssetZone.MASTER][AssetStatus.DRAFTING] == {AssetStatus.FINALIZED}
+
+
+def test_topic_asset_roundtrip(db_session):
+    a = Asset(zone=AssetZone.TOPIC, status=AssetStatus.CANDIDATE,
+              title="选题：途虎拆解", content_type="markdown")
+    db_session.add(a); db_session.flush(); db_session.expire_all()
+    got = db_session.get(Asset, a.id)
+    assert got.zone is AssetZone.TOPIC and got.status is AssetStatus.CANDIDATE
 
 
 def test_asset_roundtrip(db_session):

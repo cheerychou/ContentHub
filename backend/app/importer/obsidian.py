@@ -4,8 +4,8 @@
     python -m app.importer.obsidian --vault "/path/to/【008】个人文章" [--dry-run] [--report out.json]
 
 默认目录映射（--map 目录=zone:status 可覆盖，可多次）：
-    选题策划=source:topic  公众号文章草稿=master:drafting  定稿发表=master:published
-    读书笔记=source:topic  八字分析=source:topic  个人=source:topic
+    选题策划=topic:candidate  公众号文章草稿=master:drafting  定稿发表=master:published
+    读书笔记=source:available  八字分析=source:available  个人=source:available
 """
 import argparse
 import difflib
@@ -22,12 +22,12 @@ from ..models import Asset, AssetStatus, AssetZone
 from ..storage import ObjectStorage
 
 DEFAULT_MAP: dict[str, tuple[AssetZone, AssetStatus]] = {
-    "选题策划": (AssetZone.SOURCE, AssetStatus.TOPIC),
+    "选题策划": (AssetZone.TOPIC, AssetStatus.CANDIDATE),
     "公众号文章草稿": (AssetZone.MASTER, AssetStatus.DRAFTING),
     "定稿发表": (AssetZone.MASTER, AssetStatus.PUBLISHED),
-    "读书笔记": (AssetZone.SOURCE, AssetStatus.TOPIC),
-    "八字分析": (AssetZone.SOURCE, AssetStatus.TOPIC),
-    "个人": (AssetZone.SOURCE, AssetStatus.TOPIC),
+    "读书笔记": (AssetZone.SOURCE, AssetStatus.AVAILABLE),
+    "八字分析": (AssetZone.SOURCE, AssetStatus.AVAILABLE),
+    "个人": (AssetZone.SOURCE, AssetStatus.AVAILABLE),
 }
 
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.DOTALL)

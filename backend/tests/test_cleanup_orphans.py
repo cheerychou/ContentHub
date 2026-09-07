@@ -14,7 +14,7 @@ from scripts.cleanup_orphans import find_orphans, main
 def seeded(db_session):
     """三个区各一个被引用对象 + source/publish 各一个孤儿（无资产引用）。"""
     db_session.add_all([
-        Asset(zone=AssetZone.SOURCE, status=AssetStatus.TOPIC,
+        Asset(zone=AssetZone.SOURCE, status=AssetStatus.AVAILABLE,
               title="源料", content_type="markdown", object_key="src-uuid/a.md"),
         Asset(zone=AssetZone.MASTER, status=AssetStatus.DRAFTING,
               title="母版", content_type="video", object_key="mst-uuid/master.mov"),

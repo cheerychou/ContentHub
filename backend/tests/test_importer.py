@@ -32,8 +32,8 @@ def test_import_maps_zones_and_statuses(db_session, tmp_path):
 
     assets = db_session.query(Asset).all()
     by_path = {a.source_path: a for a in assets}
-    assert by_path["选题策划/2026年09月04日选题策划.md"].zone is AssetZone.SOURCE
-    assert by_path["选题策划/2026年09月04日选题策划.md"].status is AssetStatus.TOPIC
+    assert by_path["选题策划/2026年09月04日选题策划.md"].zone is AssetZone.TOPIC
+    assert by_path["选题策划/2026年09月04日选题策划.md"].status is AssetStatus.CANDIDATE
     assert by_path["公众号文章草稿/2026年5月10日-车企跨品牌售后.md"].zone is AssetZone.MASTER
     assert by_path["公众号文章草稿/2026年5月10日-车企跨品牌售后.md"].status is AssetStatus.DRAFTING
     assert by_path["定稿发表/20260213 汽车行业的营销必然AI化.md"].status is AssetStatus.PUBLISHED

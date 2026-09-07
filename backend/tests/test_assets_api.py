@@ -49,14 +49,14 @@ def test_upload_publish_zone_rejected(client):
     assert resp.status_code == 422
 
 
-def test_upload_source_defaults_to_topic(client):
+def test_upload_source_defaults_to_available(client):
     resp = client.post(
         "/api/assets",
         data={"zone": "source", "title": "信源"},
         files=_md_file(),
     )
     assert resp.status_code == 201
-    assert resp.json()["status"] == "topic"
+    assert resp.json()["status"] == "available"
 
 
 def test_external_link_source(client):

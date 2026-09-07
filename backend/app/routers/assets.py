@@ -21,7 +21,7 @@ from ..models import (
     Derivation,
     Recipe,
     RecipeKind,
-    TRANSITIONS,
+    ZONE_TRANSITIONS,
     utcnow,
 )
 from ..rendering import render_html
@@ -57,7 +57,7 @@ EXT_CONTENT_TYPE = {
     ".wav": "audio", ".mp3": "audio",
 }
 INITIAL_STATUS = {
-    AssetZone.SOURCE: AssetStatus.TOPIC,
+    AssetZone.SOURCE: AssetStatus.AVAILABLE,
     AssetZone.MASTER: AssetStatus.DRAFTING,
 }
 
@@ -150,7 +150,7 @@ async def create_asset(
 def create_external(body: AssetExternalCreate, db: Session = Depends(get_db)):
     asset = Asset(
         zone=AssetZone.SOURCE,
-        status=AssetStatus.TOPIC,
+        status=AssetStatus.AVAILABLE,
         title=body.title,
         content_type="link",
         source_url=str(body.source_url),
@@ -200,7 +200,7 @@ def get_asset(asset_id: uuid.UUID, db: Session = Depends(get_db),
 def update_status(asset_id: uuid.UUID, body: StatusUpdate,
                   db: Session = Depends(get_db)):
     asset = get_asset_or_404(db, asset_id)
-    allowed = TRANSITIONS[asset.status]
+    allowed = ZONE_TRANSITIONS.get(asset.zone, {}).get(asset.status, set())
     if body.status not in allowed:
         raise HTTPException(
             422,

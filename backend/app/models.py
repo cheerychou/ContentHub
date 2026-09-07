@@ -15,25 +15,60 @@ def utcnow() -> datetime:
 
 class AssetZone(str, enum.Enum):
     SOURCE = "source"    # 源料区（原子态）
+    TOPIC = "topic"      # 选题区（选题工作台，M4）
     MASTER = "master"    # 母版区（编辑态）
     PUBLISH = "publish"  # 发布态（派生物）
 
 
 class AssetStatus(str, enum.Enum):
-    TOPIC = "topic"            # 选题
+    # 源料区
+    AVAILABLE = "available"    # 可用源料（M4）
+    # 选题区（M4）
+    CANDIDATE = "candidate"      # 候选选题
+    RESEARCHING = "researching"  # 调研中
+    APPROVED = "approved"        # 已立项
+    SHELVED = "shelved"          # 已搁置
+    # 母版区 / 发布区
+    TOPIC = "topic"            # 选题（历史词汇，仅存量数据保留）
     DRAFTING = "drafting"      # 创作中
     FINALIZED = "finalized"    # 定稿
     PUBLISHING = "publishing"  # 发布中
     PUBLISHED = "published"    # 已发布
 
 
-# 状态机（PRD-MVP-001 v2.0 §5 M0）：定稿可返工，发布中可撤回，published 为终态
-TRANSITIONS: dict[AssetStatus, set[AssetStatus]] = {
-    AssetStatus.TOPIC: {AssetStatus.DRAFTING},
-    AssetStatus.DRAFTING: {AssetStatus.FINALIZED},
-    AssetStatus.FINALIZED: {AssetStatus.DRAFTING, AssetStatus.PUBLISHING},
-    AssetStatus.PUBLISHING: {AssetStatus.FINALIZED, AssetStatus.PUBLISHED},
-    AssetStatus.PUBLISHED: set(),
+# 各区合法状态词表（M4 四阶段工作台，PRD-MVP-001 v2.4）
+ZONE_STATUSES: dict[AssetZone, set[AssetStatus]] = {
+    AssetZone.SOURCE: {AssetStatus.AVAILABLE},
+    AssetZone.TOPIC: {
+        AssetStatus.CANDIDATE, AssetStatus.RESEARCHING,
+        AssetStatus.APPROVED, AssetStatus.SHELVED,
+    },
+    # master 保留 publishing/published 仅为存量 14 篇已发布母版可读；
+    # 新流转只允许 drafting⇄finalized。
+    AssetZone.MASTER: {
+        AssetStatus.DRAFTING, AssetStatus.FINALIZED,
+        AssetStatus.PUBLISHING, AssetStatus.PUBLISHED,
+    },
+    AssetZone.PUBLISH: {AssetStatus.PUBLISHING, AssetStatus.PUBLISHED},
+}
+
+# 各区状态机（M4）：master 不再允许 finalized→publishing（发布资产由派生产生即 publishing）；
+# source 无状态流转；publish 资产由派生产生即 publishing，此后仅可 published。
+ZONE_TRANSITIONS: dict[AssetZone, dict[AssetStatus, set[AssetStatus]]] = {
+    AssetZone.TOPIC: {
+        AssetStatus.CANDIDATE: {AssetStatus.RESEARCHING, AssetStatus.SHELVED},
+        AssetStatus.RESEARCHING: {AssetStatus.APPROVED, AssetStatus.SHELVED},
+        AssetStatus.SHELVED: {AssetStatus.CANDIDATE},
+        AssetStatus.APPROVED: set(),
+    },
+    AssetZone.SOURCE: {},
+    AssetZone.MASTER: {
+        AssetStatus.DRAFTING: {AssetStatus.FINALIZED},
+        AssetStatus.FINALIZED: {AssetStatus.DRAFTING},
+    },
+    AssetZone.PUBLISH: {
+        AssetStatus.PUBLISHING: {AssetStatus.PUBLISHED},
+    },
 }
 
 
