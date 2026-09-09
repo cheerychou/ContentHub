@@ -4,7 +4,7 @@ title: 数字内容供应链系统(A-DCSC) MVP建设方案
 category: PRD
 domain: MVP
 status: active
-version: 2.5
+version: 2.6
 doc_type: prd
 author: zhoudabo
 created_at: 2026-09-03
@@ -39,6 +39,7 @@ ContentHub（A-DCSC）是**面向 B2B 企业的内容供应链系统**：让企�
 | M2 顺延项 | CDD3 内容包导出与协作原语 UI 顺延——触发条件分别为 CDD3 MK-005 Phase 3 启动 / 第二名使用者出现 |
 | M3（MVP 后第一迭代） | UI 状态驱动任务流（主任务默认展开/低频折叠）+ 状态筛选 chips + docx 正文抽取 + 工程清偿（TransportError/死代码/docx 防呆/preflight 已在 M2）→ 🔧 代码完成并通过终审，UX 验收待用户执行 |
 | M4 四阶段工作台 | 左侧四阶段导航（素材库/选题策划/内容制作/内容发布），每阶段独立列表+详情与阶段状态机（选题：候选→调研中→已立项/搁置）；立项可产出初始文稿入素材库（血缘串联选题→素材→母版→发布物）→ 🔧 代码完成并通过终审（存量迁移 27 篇选题入区、真实链路冒烟通过），UX 验收待用户执行 |
+| M5 前端组件体系 | 自 CDD3 提取 shadcn/ui 规范与公共组件（Tailwind v4 + base-ui + tokens，17 原子组件 + PageHeader/StatusBadge/EmptyState/ErrorState），界面重构到组件体系（逻辑零改动）→ 🔧 代码完成并通过终审，UX 验收待用户执行 |
 
 ## 3. 核心概念模型
 
@@ -105,7 +106,7 @@ ContentHub（A-DCSC）是**面向 B2B 企业的内容供应链系统**：让企�
 |------|------|------|
 | 后端 | FastAPI + PostgreSQL | 与 CDD3 同构（Django/DRF 亦可，团队熟 FastAPI 则优先） |
 | 对象存储 | MinIO（本地卷） | 大视频文件局域网上传，速度非瓶颈 |
-| 前端 | React + TypeScript | 与 CDD3 同构 |
+| 前端 | React + TypeScript + Tailwind v4（CSS-first）+ shadcn/ui | 与 CDD3 同构；new-york、base-ui 变体，自 CDD3 提取，组件约定见 frontend/COMPONENTS.md |
 | 封面渲染 | HTML/CSS 模板 + Playwright 无头截图 | 规则渲染，确定性强 |
 | 文本变体 | LLM API（提示词调用） | 复用既有提示词资产 |
 | 后台任务 | FastAPI BackgroundTasks | 单人规模够用；规模上来再引入队列 |
@@ -150,3 +151,4 @@ v1.x（2026-09-03）以"三态存储 + OpenMetadata/Neo4j 血缘图谱"为核心
 | 2.3 | 2026-09-05 | 新增 M3 迭代：UI 任务流/docx/清偿；MVP 三期（M0-M2）已全部交付 | zhoudabo |
 | 2.4 | 2026-09-05 | 新增 M4 迭代：四阶段工作台（选题策划状态机/初始文稿入素材库/左导航），§3 补四阶段模型 | zhoudabo |
 | 2.5 | 2026-09-05 | 词汇统一：废弃伞形词，按类型命名封面模板/提示词（封面模板/文本提示词） | zhoudabo |
+| 2.6 | 2026-09-05 | 新增 M5 迭代：shadcn 组件体系（CDD3 提取）与界面重构 | zhoudabo |
