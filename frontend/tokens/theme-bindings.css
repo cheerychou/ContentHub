@@ -2,7 +2,7 @@
  * 三应用共享的 Tailwind @theme 绑定 + 基础样式
  *
  * 包含：
- *   - @theme 主块（色彩/阴影/字体/容器宽度 → Tailwind 工具类映射）
+ *   - @theme inline 主块（色彩/阴影/字体/容器宽度 → Tailwind 工具类映射，inline 以支持暗色覆写传导）
  *   - @theme inline 圆角（避免与 :root Token 同名自引用）
  *   - @utility motion（duration-fast/normal/slow）与 spacing（p-page/p-card/gap-section/space-y-form）
  *   - [data-density='compact'] 密度切换钩子
@@ -70,8 +70,10 @@
   --spacing-form-field: 0.75rem;
 }
 
-/* ===== @theme：映射 Tailwind 工具类到语义 Token ===== */
-@theme {
+/* ===== @theme：映射 Tailwind 工具类到语义 Token =====
+   CDD3 继承缺陷修复：此块由 @theme 改为 @theme inline —— inline 使 .dark 叶子覆写可传导
+   （纯 @theme 的 var() 间接引用在 :root 解析，.dark 覆写叶子变量无法传导到工具类） */
+@theme inline {
   --color-background: var(--color-semantic-saas-bg-page);
   --color-foreground: var(--color-semantic-saas-text-primary);
 

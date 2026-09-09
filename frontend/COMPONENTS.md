@@ -27,7 +27,7 @@ frontend/
 ├── components.json            # shadcn CLI 配置（style new-york，base base-ui）
 ├── tokens/*.css               # 设计 token（自 CDD3 Style Dictionary 产物拷贝，8 个文件）
 └── src/
-    ├── index.css              # @import 'tailwindcss' + tokens imports + @custom-variant dark
+    ├── index.css              # @import 'tailwindcss' + tokens imports（@custom-variant dark 声明在 theme-bindings.css）
     ├── lib/utils.ts           # cn（re-export npm 包 cn）
     └── components/
         ├── ui/                # shadcn 原子组件：无业务语义，纯呈现
@@ -103,9 +103,11 @@ CDD3 路径只读。拷贝前逐项检查：
   brand-layer / tokens-typography / tokens-shadow / tokens-layout / tokens-motion），
   由 `src/index.css` 按 CDD3 同构引入；`@theme` 绑定把 CSS 变量映射为 Tailwind 工具类
   （如 `--color-card` → `bg-card`）。
-- **暗色**：`dark-layer.css` 已内置全部暗色变量，`theme-bindings.css` 已声明
-  `@custom-variant dark (&:is(.dark *))` —— **根元素挂 `.dark` class 即整站生效**，
-  无需改任何组件。当前**暂无切换开关**（M5 约束：不接开关）；未来接入只需 toggle
+- **暗色**：`dark-layer.css` 已内置全部暗色变量（在 `.dark` 作用域覆写叶子
+  `--color-semantic-saas-*`），`theme-bindings.css` 声明 `@custom-variant dark (&:is(.dark *))`
+  且主映射块使用 **`@theme inline`** —— inline 使工具类值在**使用处**解析 var()，
+  因此根元素挂 `.dark` class 后，叶子变量被 `.dark` 覆写即整站生效，无需改任何组件。
+  当前**暂无切换开关**（M5 约束：不接开关）；未来接入只需 toggle
   `document.documentElement.classList`。
 - **写样式只用语义工具类**（`bg-primary`、`text-muted-foreground`、`border-border`、
   `bg-stat-3-soft` 等），不写死色值，暗色才能自动生效。
