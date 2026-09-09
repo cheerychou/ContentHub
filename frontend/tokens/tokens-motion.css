@@ -1,0 +1,12 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --motion-duration-fast: 150ms; /** 微交互：hover 颜色、focus 边框、checkbox 切换 */
+  --motion-duration-normal: 200ms; /** 标准过渡：弹窗进出、展开折叠、下拉菜单 */
+  --motion-duration-slow: 300ms; /** 大过渡：Sheet 滑入、页面切换、模态框 */
+  --motion-easing-standard: cubic-bezier(0.4, 0, 0.2, 1); /** 标准 UI 过渡曲线（Material Design standard） */
+  --motion-easing-enter: cubic-bezier(0, 0, 0.2, 1); /** 元素进场 · 减速入场 */
+  --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1); /** 元素退场 · 加速离场 */
+}

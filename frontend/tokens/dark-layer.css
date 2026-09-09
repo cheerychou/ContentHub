@@ -1,0 +1,135 @@
+/**
+ * 暗色模式语义色映射
+ *
+ * 系统化定义所有语义 Token 的明→暗转换。
+ * 三个应用统一引用，避免重复定义。
+ *
+ * 使用方式: @import '../tokens/dark-layer.css';
+ *
+ * 转换规则:
+ *   背景色:    翻转移植（L=95-100% → L=22-32%）
+ *   文字色:    翻转移植（L=18%     → L=92%）
+ *   边框色:    翻转移植（L=92%     → L=28-45%）
+ *   状态主色:  色度降低 20-25%（高饱和在暗底上产生霓虹效应）
+ *   状态淡色:  翻转移植（L=95-96% → L=24-28%, 保持低色度）
+ *   品牌色:    明度翻转到 62%（暗底上深靛蓝不可读）
+ *   强调色:    明度提升至 63%, 保持色度避免霓虹效应
+ */
+
+.dark {
+  /* ================================================================
+     中性色 — 背景层
+     明→暗规则: 浅背景翻转为深背景, 明度从 96-100% 翻转到 22-32%
+     ================================================================ */
+  --color-semantic-saas-bg-page:          oklch(22% 0.008 250);
+  --color-semantic-saas-bg-subtle:        oklch(25% 0.008 250);
+  --color-semantic-saas-bg-surface:       oklch(28% 0.008 250);
+  --color-semantic-saas-bg-surface-hover: oklch(32% 0.008 250);
+  --color-semantic-saas-bg-surface-raised: oklch(32% 0.008 250);
+  --color-semantic-saas-bg-disabled:      oklch(25% 0.004 250);
+
+  /* ================================================================
+     中性色 — 文字层
+     明→暗规则: 深文字翻转为浅文字
+     ================================================================ */
+  --color-semantic-saas-text-primary:     oklch(92% 0.004 250);
+  --color-semantic-saas-text-secondary:   oklch(60% 0.008 250);
+  --color-semantic-saas-text-disabled:    oklch(40% 0.004 250);
+  --color-semantic-saas-text-placeholder: oklch(50% 0.008 250);
+
+  /* ================================================================
+     中性色 — 边框
+     明→暗规则: 浅边框翻转为深边框
+     ================================================================ */
+  --color-semantic-saas-border-default:   oklch(32% 0.008 250);
+  --color-semantic-saas-border-strong:    oklch(45% 0.008 250);
+
+  /* ================================================================
+     语义状态色 — 主色
+     明→暗规则: 色度降低 20-25%, 明度微调 +3%（暗底上同明度看起来更亮）
+     ================================================================ */
+  --color-accent-gn-series-accent:        oklch(62% 0.14 267);
+  --color-accent-gn-series-soft:          oklch(24% 0.03 267);
+  --color-accent-gn-series-hover:         oklch(70% 0.12 267);
+  --color-accent-gn-series-muted:         oklch(22% 0.005 267);
+  --color-accent-gn-series-ring:          oklch(62% 0.14 267 / 50%);
+
+  --color-semantic-saas-success:          oklch(68% 0.15 152);
+  --color-semantic-saas-warning:          oklch(78% 0.16 95);
+  --color-semantic-saas-danger:           oklch(58% 0.20 20);
+  --color-semantic-saas-info:             oklch(68% 0.11 242);
+
+  /* ================================================================
+     前景色 — 暗色模式
+     on-color 在暗色模式下保持白色（已验证所有状态色背景对比度安全）
+     on-warning 保持黑色（暗色警告色 L=78%，黑字对比度充足）
+     ================================================================ */
+  --color-semantic-saas-on-warning: #000000;
+
+  /* ================================================================
+     强调色 — 暗色模式
+     ================================================================ */
+  --color-highlight-highlight:            oklch(63% 0.18 57);
+  --color-highlight-soft:                 oklch(26% 0.05 57);
+  --color-highlight-hover:                oklch(55% 0.20 57);
+
+  /* ================================================================
+     语义状态色 — 淡色背景
+     明→暗规则: 从高明显淡色翻转为低明度淡色, 色度控制在 0.03-0.05
+     ================================================================ */
+  --color-semantic-saas-success-soft:     oklch(28% 0.04 152);
+  --color-semantic-saas-warning-soft:     oklch(24% 0.05 95);
+  --color-semantic-saas-danger-soft:      oklch(26% 0.05 20);
+  --color-semantic-saas-info-soft:        oklch(28% 0.04 242);
+
+  /* ================================================================
+     侧边栏
+     ================================================================ */
+  --color-semantic-saas-sidebar-bg:       oklch(24% 0.006 250);
+  --color-semantic-saas-sidebar-fg:       oklch(92% 0.004 250);
+  --color-semantic-saas-sidebar-border:   oklch(32% 0.008 250);
+}
+
+/* ================================================================
+   图表系列色 — 暗色模式
+   浅亮色值确保在暗色背景上具有足够对比度
+   ================================================================ */
+.dark {
+  --color-chart-1: oklch(62% 0.14 267);   /* 品牌色暗色变体 */
+  --color-chart-2: oklch(72% 0.10 267);   /* 派生浅蓝 */
+  --color-chart-3: oklch(82% 0.06 267);   /* 派生更浅蓝 */
+  --color-chart-4: oklch(72% 0.10 242);   /* 青色暗色 */
+  --color-chart-5: oklch(68% 0.006 250);  /* 中性辅助色暗色 */
+}
+
+/* ================================================================
+   统计卡并列区分色 — 暗色模式
+   明→暗规则: 主色 L→65-70%, C×0.8; soft L→26%, C→0.04
+   ================================================================ */
+.dark {
+  --color-semantic-saas-stat-1:      oklch(70% 0.20 302);
+  --color-semantic-saas-stat-1-soft: oklch(26% 0.04 308);
+  --color-semantic-saas-stat-2:      oklch(70% 0.08 185);
+  --color-semantic-saas-stat-2-soft: oklch(26% 0.04 181);
+  --color-semantic-saas-stat-3:      oklch(70% 0.10 163);
+  --color-semantic-saas-stat-3-soft: oklch(26% 0.04 166);
+  --color-semantic-saas-stat-4:      oklch(69% 0.20 293);
+  --color-semantic-saas-stat-4-soft: oklch(26% 0.04 294);
+  --color-semantic-saas-stat-5:      oklch(66% 0.18 277);
+  --color-semantic-saas-stat-5-soft: oklch(26% 0.04 272);
+  --color-semantic-saas-stat-6:      oklch(70% 0.11 242);
+  --color-semantic-saas-stat-6-soft: oklch(26% 0.04 237);
+  --color-semantic-saas-stat-7:      oklch(70% 0.17 1);
+  --color-semantic-saas-stat-7-soft: oklch(26% 0.04 343);
+  --color-semantic-saas-stat-8:      oklch(70% 0.18 18);
+  --color-semantic-saas-stat-8-soft: oklch(26% 0.04 12);
+}
+
+/* ================================================================
+   阴影 — 暗色模式调整
+   ================================================================ */
+.dark {
+  --shadow-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevation-2: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-elevation-3: 0 8px 30px rgba(0, 0, 0, 0.5);
+}

@@ -1,0 +1,8 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --typography-font-family-sans: 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif; /** 正文字体 · Noto Sans SC 自托管 + 系统字体兜底 */
+  --typography-font-family-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', ui-monospace, monospace; /** 等宽字体 · 金额/数字/代码/条码 */
+}

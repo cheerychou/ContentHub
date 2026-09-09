@@ -1,0 +1,88 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --color-palette-blue-500: oklch(38% 0.16 265); /** 品牌色（深邃靛蓝）· ≈#173796 · §4.9 决策确定 */
+  --color-palette-purple-500: oklch(51.1% 0.261 279); /** 平台管理 accent 主色 · #5537F5 · 从 CDD Logo 3 个紫色中选定 */
+  --color-palette-red-500: oklch(48% 0.22 20); /** 危险/错误色（深红）· ≈#BA0022 · §4.9 加深+微调色相 */
+  --color-palette-yellow-500: oklch(82% 0.20 95); /** 警告色（亮黄）· ≈#EDC000 · §4.9 提亮+推向纯黄 */
+  --color-palette-green-500: oklch(62% 0.17 150); /** 成功色 · ≈#03A14A */
+  --color-palette-cyan-500: oklch(62% 0.13 240); /** 信息色 · ≈#248FCC */
+  --color-palette-orange-500: oklch(58% 0.21 57); /** 强调色（活力橙）· ≈#D04900 · §4.9 决策确定 */
+  --color-palette-neutral-0: oklch(100% 0 0); /** 纯白 */
+  --color-palette-neutral-50: oklch(99% 0.002 240); /** 页面基底 */
+  --color-palette-neutral-100: oklch(96% 0.004 250); /** 交替段落底色 / hover 背景 */
+  --color-palette-neutral-200: oklch(92% 0.005 250); /** 结构线 / 边框 */
+  --color-palette-neutral-400: oklch(54% 0.012 250); /** 辅助文字 */
+  --color-palette-neutral-600: oklch(35% 0.012 250); /** 深色背景（CTA 区域） */
+  --color-palette-neutral-900: oklch(18% 0.012 250); /** 主文字 */
+  --color-accent-gn-series-accent: oklch(38% 0.16 265); /** G/N 系列品牌色（深邃靛蓝） */
+  --color-accent-gn-series-hover: oklch(30% 0.16 265); /** 品牌色 hover 态 · L − 8% */
+  --color-accent-gn-series-soft: oklch(95% 0.03 265); /** 品牌色淡色背景 · L→95%, C→0.03 */
+  --color-accent-gn-series-muted: oklch(98% 0.006 265); /** 品牌色极淡背景 · L→98%, C→0.006 */
+  --color-accent-gn-series-ring: oklch(38% 0.16 265 / 50%); /** 品牌色焦点环 · 50% 透明度 */
+  --color-accent-gn-series-chart-2: oklch(46% 0.128 265); /** 图表第二系列 · L+8%, C×0.8 */
+  --color-accent-gn-series-chart-3: oklch(58% 0.08 265); /** 图表第三系列 · L+20%, C×0.5 */
+  --color-accent-platform-hover: oklch(43.1% 0.261 279); /** accent hover 态 · L − 8% */
+  --color-accent-platform-soft: oklch(95.0% 0.030 279); /** accent 淡色背景 · L→95%, C→0.03 */
+  --color-accent-platform-muted: oklch(98.0% 0.006 279); /** accent 极淡背景 · L→98%, C→0.006 */
+  --color-accent-platform-ring: oklch(51.1% 0.261 279 / 50%); /** accent 焦点环 · 50% 透明度 */
+  --color-accent-platform-chart-2: oklch(59.1% 0.209 279); /** 图表第二系列 · L+8%, C×0.8 */
+  --color-accent-platform-chart-3: oklch(71.1% 0.131 279); /** 图表第三系列 · L+20%, C×0.5 */
+  --color-highlight-hover: oklch(52% 0.21 57); /** 强调色 hover 态 · L − 6% */
+  --color-highlight-soft: oklch(95% 0.04 57); /** 强调色淡色背景 · 用于异常指标标签 */
+  --color-highlight-ring: oklch(58% 0.21 57 / 50%); /** 强调色焦点环 · 50% 透明度 */
+  --color-semantic-saas-on-color: #ffffff; /** 有色背景上的默认前景色（primary/destructive/success/info/highlight/sidebar-primary 共用）· 白 */
+  --color-semantic-saas-on-warning: #000000; /** 警告色背景上的前景色 · 黑（黄底白字 WCAG 对比度仅 1.7:1，不达标） */
+  --color-semantic-saas-success-soft: oklch(95% 0.03 150);
+  --color-semantic-saas-warning-soft: oklch(96% 0.06 95);
+  --color-semantic-saas-danger-soft: oklch(95% 0.04 20);
+  --color-semantic-saas-info-soft: oklch(95% 0.04 240);
+  --color-semantic-saas-stat-1: oklch(55.8% 0.252 302); /** 统计卡并列区分色 1（原 purple-600）· 从 #9333ea 转换 */
+  --color-semantic-saas-stat-1-soft: oklch(97.7% 0.014 308);
+  --color-semantic-saas-stat-2: oklch(60% 0.104 185); /** 统计卡并列区分色 2（原 teal-600）· 从 #0d9488 转换 */
+  --color-semantic-saas-stat-2-soft: oklch(98.4% 0.014 181);
+  --color-semantic-saas-stat-3: oklch(59.6% 0.127 163); /** 统计卡并列区分色 3（原 emerald-600）· 从 #059669 转换 */
+  --color-semantic-saas-stat-3-soft: oklch(97.9% 0.021 166);
+  --color-semantic-saas-stat-4: oklch(54.1% 0.247 293); /** 统计卡并列区分色 4（原 violet-600）· 从 #7c3aed 转换 */
+  --color-semantic-saas-stat-4-soft: oklch(96.9% 0.016 294);
+  --color-semantic-saas-stat-5: oklch(51.1% 0.23 277); /** 统计卡并列区分色 5（原 indigo-600）· 从 #4f46e5 转换 */
+  --color-semantic-saas-stat-5-soft: oklch(96.2% 0.018 272);
+  --color-semantic-saas-stat-6: oklch(58.8% 0.139 242); /** 统计卡并列区分色 6（原 sky-600）· 从 #0284c7 转换 */
+  --color-semantic-saas-stat-6-soft: oklch(97.7% 0.012 237);
+  --color-semantic-saas-stat-7: oklch(59.2% 0.218 1); /** 统计卡并列区分色 7（原 pink-600）· 从 #db2777 转换 */
+  --color-semantic-saas-stat-7-soft: oklch(97.1% 0.014 343);
+  --color-semantic-saas-stat-8: oklch(58.6% 0.222 18); /** 统计卡并列区分色 8（原 rose-600）· 从 #e11d48 转换 */
+  --color-semantic-saas-stat-8-soft: oklch(96.9% 0.015 12);
+  --color-semantic-saas-sidebar-bg: oklch(98% 0.003 250);
+  --color-accent-platform-accent: var(--color-palette-purple-500); /** 平台管理品牌 accent */
+  --color-highlight-highlight: var(--color-palette-orange-500); /** 强调色（活力橙）· 页面级注意力信号，每屏 ≤2 处 */
+  --color-semantic-saas-bg-page: var(--color-palette-neutral-50);
+  --color-semantic-saas-bg-subtle: var(--color-palette-neutral-100);
+  --color-semantic-saas-bg-surface: var(--color-palette-neutral-0);
+  --color-semantic-saas-bg-surface-hover: var(--color-palette-neutral-50);
+  --color-semantic-saas-bg-surface-raised: var(--color-palette-neutral-0);
+  --color-semantic-saas-bg-disabled: var(--color-palette-neutral-100);
+  --color-semantic-saas-text-primary: var(--color-palette-neutral-900);
+  --color-semantic-saas-text-secondary: var(--color-palette-neutral-400);
+  --color-semantic-saas-text-disabled: var(--color-palette-neutral-200);
+  --color-semantic-saas-text-placeholder: var(--color-palette-neutral-400);
+  --color-semantic-saas-text-link: var(--color-accent-gn-series-accent);
+  --color-semantic-saas-text-inverse: var(--color-palette-neutral-0);
+  --color-semantic-saas-border-default: var(--color-palette-neutral-200);
+  --color-semantic-saas-border-strong: var(--color-palette-neutral-400);
+  --color-semantic-saas-success: var(--color-palette-green-500);
+  --color-semantic-saas-warning: var(--color-palette-yellow-500);
+  --color-semantic-saas-danger: var(--color-palette-red-500);
+  --color-semantic-saas-info: var(--color-palette-cyan-500);
+  --color-semantic-saas-highlight-soft: var(--color-highlight-soft); /** 强调色淡色背景 */
+  --color-semantic-saas-chart-1: var(--color-accent-gn-series-accent);
+  --color-semantic-saas-chart-2: var(--color-accent-gn-series-chart-2);
+  --color-semantic-saas-chart-3: var(--color-accent-gn-series-chart-3);
+  --color-semantic-saas-chart-4: var(--color-palette-cyan-500);
+  --color-semantic-saas-chart-5: var(--color-palette-neutral-400);
+  --color-semantic-saas-sidebar-fg: var(--color-palette-neutral-900);
+  --color-semantic-saas-sidebar-border: var(--color-palette-neutral-200);
+  --color-semantic-saas-highlight: var(--color-highlight-highlight); /** 强调色（活力橙）· 主 CTA / 异常指标 */
+}

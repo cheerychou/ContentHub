@@ -1,0 +1,15 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --container-dialog: 480px; /** Dialog 简单表单/确认框 */
+  --container-dialog-wide: 640px; /** Dialog 复杂表单/选择器/列表 */
+  --container-detail: 896px; /** 详情页、阅读型页面 */
+  --container-standard: 1280px; /** 列表页、表格页（默认） */
+  --container-wide: 1536px; /** 数据密集仪表盘 */
+  --spacing-page-padding: 1.5rem; /** 页面级内边距 · 对应 Tailwind p-6（24px），紧凑模式下收至 16px */
+  --spacing-section-gap: 1rem; /** 页面区块间距 · 对应 gap-4（16px），紧凑模式下收至 12px */
+  --spacing-card-padding: 1.5rem; /** 卡片内边距 · 对应 p-6（24px），紧凑模式下收至 16px */
+  --spacing-form-field: 1.5rem; /** 表单字段纵向间距 · 对应 space-y-6（24px），紧凑模式下收至 12px */
+}

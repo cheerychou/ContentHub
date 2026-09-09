@@ -1,0 +1,42 @@
+/**
+ * 品牌激活层（语义对齐 shadcn：品牌色走 --color-primary，不占用 --color-accent）
+ *
+ * 职责边界（参见 KNW-UI-001）：
+ *   --color-primary       → 品牌主色（G/N 蓝或平台紫），由各应用 @theme 映射
+ *   --color-accent        → 中性 hover 背景，由各应用 @theme 直接映射 bg-subtle
+ *   品牌淡色装饰底        → 使用 bg-primary/10 透明度修饰符派生（shadcn 规范）
+ *
+ * 使用方式:
+ *   各应用 @theme 中直接引用对应的品牌 token：
+ *     - store-web:      --color-primary: var(--color-accent-gn-series-accent);
+ *     - platform-web:   --color-primary: var(--color-accent-platform-accent);
+ *
+ * 历史变更：
+ *   2026-06-17 移除 --color-accent 的品牌色定义，消除与 shadcn 语义的冲突。
+ *              品牌切换从 --color-accent 迁移到 --color-primary。
+ *              移除 --color-primary-soft / --color-primary-muted，改用 bg-primary/10。
+ */
+
+/* ===== 默认品牌: G/N 系列（深邃靛蓝）===== */
+:root {
+  --color-primary:        var(--color-accent-gn-series-accent);
+  --color-primary-ring:   var(--color-accent-gn-series-ring);
+  --color-primary-hover:  var(--color-accent-gn-series-hover);
+  --color-highlight:       var(--color-highlight-highlight);
+  --color-highlight-soft:  var(--color-highlight-soft);
+  --color-highlight-hover: var(--color-highlight-hover);
+  --color-chart-1:        var(--color-accent-gn-series-accent);
+  --color-chart-2:        var(--color-accent-gn-series-chart-2);
+  --color-chart-3:        var(--color-accent-gn-series-chart-3);
+  --color-chart-4:        var(--color-semantic-saas-chart-4);
+  --color-chart-5:        var(--color-semantic-saas-chart-5);
+}
+
+/* ===== 品牌切换: 平台管理（紫色）===== */
+[data-brand="platform"] {
+  --color-primary:        var(--color-accent-platform-accent);
+  --color-primary-ring:   var(--color-accent-platform-ring);
+  --color-primary-hover:  var(--color-accent-platform-hover);
+  --color-chart-2:        var(--color-accent-platform-chart-2);
+  --color-chart-3:        var(--color-accent-platform-chart-3);
+}

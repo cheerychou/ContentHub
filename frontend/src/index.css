@@ -1,31 +1,14 @@
-:root {
-  font-family: system-ui, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  line-height: 1.5;
-  color: #1f2328;
-  background: #fff;
-  color-scheme: light dark;
-}
+@import 'tailwindcss';
+@source "./**/*.{ts,tsx}";
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #d0d7de;
-    background: #16171d;
-  }
-}
+/* ===== Token 层（提取自上游设计系统 shared-ui 的构建产物，见 frontend/tokens/） ===== */
+@import '../tokens/tokens-saas.css';
+@import '../tokens/tokens-typography.css';
+@import '../tokens/tokens-shadow.css';
+@import '../tokens/tokens-layout.css';
+@import '../tokens/tokens-motion.css';
+@import '../tokens/brand-layer.css';
+@import '../tokens/dark-layer.css';
 
-body {
-  margin: 0;
-}
-
-button,
-input,
-select {
-  font: inherit;
-  margin-right: 4px;
-}
-
-table td,
-table th {
-  padding: 6px 8px;
-  vertical-align: top;
-}
+/* ===== 共享 @theme 绑定 + 基础样式 ===== */
+@import '../tokens/theme-bindings.css';

@@ -1,0 +1,223 @@
+/**
+ * 三应用共享的 Tailwind @theme 绑定 + 基础样式
+ *
+ * 包含：
+ *   - @theme 主块（色彩/阴影/字体/容器宽度 → Tailwind 工具类映射）
+ *   - @theme inline 圆角（避免与 :root Token 同名自引用）
+ *   - @utility motion（duration-fast/normal/slow）与 spacing（p-page/p-card/gap-section/space-y-form）
+ *   - [data-density='compact'] 密度切换钩子
+ *   - @custom-variant dark
+ *   - @layer base（box-sizing、body 基础样式、prefers-reduced-motion）
+ *   - @layer utilities（text-mark 工具类）
+ *
+ * 不包含（各应用自行定义）：
+ *   - :root 应用特有变量（渐变等）
+ *   - .dark 应用特有覆写
+ *   - @theme inline sidebar 主题（仅 store-web）
+ *   - @plugin / @source 指令
+ *
+ * 使用方式: @import '../tokens/theme-bindings.css';
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+/* ===== Motion：easing 桥接（@theme ease namespace → ease-standard/enter/exit 工具类） ===== */
+@theme {
+  --ease-standard: var(--motion-easing-standard);
+  --ease-enter: var(--motion-easing-enter);
+  --ease-exit: var(--motion-easing-exit);
+}
+
+/* ===== Motion：duration 桥接（无 namespace，自定义 utility） ===== */
+@utility duration-fast {
+  transition-duration: var(--motion-duration-fast);
+}
+
+@utility duration-normal {
+  transition-duration: var(--motion-duration-normal);
+}
+
+@utility duration-slow {
+  transition-duration: var(--motion-duration-slow);
+}
+
+/* ===== Spacing：语义间距 utility（引用 --spacing-* token，支持密度切换） ===== */
+@utility p-page {
+  padding: var(--spacing-page-padding);
+}
+
+@utility p-card {
+  padding: var(--spacing-card-padding);
+}
+
+@utility gap-section {
+  gap: var(--spacing-section-gap);
+}
+
+@utility space-y-form {
+  & > :not(:last-child) {
+    margin-block-start: var(--spacing-form-field);
+    margin-block-end: 0;
+  }
+}
+
+/* 密度切换钩子：紧凑模式（未来门店端小屏/高密度列表场景启用）
+   用法：document.documentElement.setAttribute('data-density', 'compact') */
+[data-density='compact'] {
+  --spacing-page-padding: 1rem;
+  --spacing-section-gap: 0.75rem;
+  --spacing-card-padding: 1rem;
+  --spacing-form-field: 0.75rem;
+}
+
+/* ===== @theme：映射 Tailwind 工具类到语义 Token ===== */
+@theme {
+  --color-background: var(--color-semantic-saas-bg-page);
+  --color-foreground: var(--color-semantic-saas-text-primary);
+
+  --color-primary: var(--color-accent-gn-series-accent);
+  --color-primary-foreground: var(--color-semantic-saas-on-color);
+
+  --color-secondary: var(--color-semantic-saas-bg-subtle);
+  --color-secondary-foreground: var(--color-semantic-saas-text-primary);
+
+  --color-destructive: var(--color-semantic-saas-danger);
+  --color-destructive-foreground: var(--color-semantic-saas-on-color);
+  --color-destructive-soft: var(--color-semantic-saas-danger-soft);
+  --color-destructive-light: var(--color-semantic-saas-danger-soft);
+
+  /* 状态色：info / warning / success 全量映射（兼容 -light/-dark 旧命名） */
+  --color-info: var(--color-semantic-saas-info);
+  --color-info-foreground: var(--color-semantic-saas-on-color);
+  --color-info-soft: var(--color-semantic-saas-info-soft);
+  --color-info-light: var(--color-semantic-saas-info-soft);
+  --color-info-dark: var(--color-semantic-saas-info);
+
+  --color-success: var(--color-semantic-saas-success);
+  --color-success-foreground: var(--color-semantic-saas-on-color);
+  --color-success-soft: var(--color-semantic-saas-success-soft);
+  --color-success-light: var(--color-semantic-saas-success-soft);
+  --color-success-dark: var(--color-semantic-saas-success);
+
+  --color-warning: var(--color-semantic-saas-warning);
+  --color-warning-foreground: var(--color-semantic-saas-on-warning);
+  --color-warning-soft: var(--color-semantic-saas-warning-soft);
+  --color-warning-light: var(--color-semantic-saas-warning-soft);
+  --color-warning-dark: var(--color-semantic-saas-warning);
+
+  /* 统计卡并列区分色 */
+  --color-stat-1: var(--color-semantic-saas-stat-1);
+  --color-stat-1-soft: var(--color-semantic-saas-stat-1-soft);
+  --color-stat-2: var(--color-semantic-saas-stat-2);
+  --color-stat-2-soft: var(--color-semantic-saas-stat-2-soft);
+  --color-stat-3: var(--color-semantic-saas-stat-3);
+  --color-stat-3-soft: var(--color-semantic-saas-stat-3-soft);
+  --color-stat-4: var(--color-semantic-saas-stat-4);
+  --color-stat-4-soft: var(--color-semantic-saas-stat-4-soft);
+  --color-stat-5: var(--color-semantic-saas-stat-5);
+  --color-stat-5-soft: var(--color-semantic-saas-stat-5-soft);
+  --color-stat-6: var(--color-semantic-saas-stat-6);
+  --color-stat-6-soft: var(--color-semantic-saas-stat-6-soft);
+  --color-stat-7: var(--color-semantic-saas-stat-7);
+  --color-stat-7-soft: var(--color-semantic-saas-stat-7-soft);
+  --color-stat-8: var(--color-semantic-saas-stat-8);
+  --color-stat-8-soft: var(--color-semantic-saas-stat-8-soft);
+
+  /* 图表系列色 */
+  --color-chart-1: var(--color-chart-1);
+  --color-chart-2: var(--color-chart-2);
+  --color-chart-3: var(--color-chart-3);
+  --color-chart-4: var(--color-chart-4);
+  --color-chart-5: var(--color-chart-5);
+
+  --color-muted: var(--color-semantic-saas-bg-subtle);
+  --color-muted-foreground: var(--color-semantic-saas-text-secondary);
+
+  --color-accent: var(--color-semantic-saas-bg-subtle);
+  --color-accent-foreground: var(--color-semantic-saas-text-primary);
+
+  --color-popover: var(--color-semantic-saas-bg-surface-raised);
+  --color-popover-foreground: var(--color-semantic-saas-text-primary);
+
+  --color-card: var(--color-semantic-saas-bg-surface);
+  --color-card-foreground: var(--color-semantic-saas-text-primary);
+
+  --color-border: var(--color-semantic-saas-border-default);
+  --color-input: var(--color-semantic-saas-border-default);
+  --color-ring: var(--color-primary-ring);
+
+  --shadow-xs: var(--shadow-elevation-1);
+  --shadow-sm: var(--shadow-elevation-1);
+  --shadow-md: var(--shadow-elevation-2);
+  --shadow-lg: var(--shadow-elevation-3);
+  --shadow-xl: var(--shadow-elevation-3);
+
+  --font-family-sans: var(--typography-font-family-sans);
+  --font-family-mono: var(--typography-font-family-mono);
+
+  --color-highlight: var(--color-highlight-highlight);
+  --color-highlight-foreground: var(--color-semantic-saas-on-color);
+
+  /* ===== 布局：容器宽度 ===== */
+  --max-width-dialog: var(--container-dialog);
+  --max-width-dialog-wide: var(--container-dialog-wide);
+  --max-width-detail: var(--container-detail);
+  --max-width-standard: var(--container-standard);
+  --max-width-wide: var(--container-wide);
+}
+
+/* ===== 圆角：使用 @theme inline 避免与 :root Token 同名自引用 ===== */
+@theme inline {
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+}
+
+/* ===== Sidebar 主题 ===== */
+@theme inline {
+  --color-sidebar: var(--color-semantic-saas-sidebar-bg);
+  --color-sidebar-foreground: var(--color-semantic-saas-sidebar-fg);
+  --color-sidebar-primary: var(--color-accent-gn-series-accent);
+  --color-sidebar-primary-foreground: var(--color-semantic-saas-on-color);
+  --color-sidebar-accent: var(--color-accent-gn-series-soft);
+  --color-sidebar-accent-foreground: var(--color-accent-gn-series-accent);
+  --color-sidebar-border: var(--color-semantic-saas-sidebar-border);
+  --color-sidebar-ring: var(--color-accent-gn-series-ring);
+}
+
+/* ===== 基础样式 ===== */
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--color-semantic-saas-border-default);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--color-semantic-saas-bg-page);
+    color: var(--color-semantic-saas-text-primary);
+    font-family: var(--typography-font-family-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .bg-text-mark { background-color: var(--text-mark); }
+  .text-text-mark-foreground { color: var(--text-mark-foreground); }
+}
+
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
