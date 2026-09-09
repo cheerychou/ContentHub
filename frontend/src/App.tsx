@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
   fetchPlatformMeta, initialDraft, linkDerivation, listAssets, listRecipes,
@@ -6,9 +6,25 @@ import {
 } from "./api";
 import {
   RECIPE_KIND_LABELS, STATUS_LABELS, ZONE_LABELS, ZONE_STATUSES,
-  ZONE_TRANSITIONS, type Asset, type AssetDetail, type Recipe, type Zone,
+  ZONE_TRANSITIONS, type Asset, type AssetDetail, type Recipe, type Status, type Zone,
 } from "./types";
 import Recipes from "./Recipes";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/common/page-header";
+import { cn } from "@/lib/utils";
 
 // 四阶段工作台（M4）：导航即区域选择器；STAGES 同时驱动左导航与路由解析
 const STAGES: { zone: Zone; hash: string; icon: string; label: string }[] = [
@@ -55,15 +71,12 @@ function nextStepHint(d: AssetDetail): string {
   return "已登记发布 ✓。全流程完成。";
 }
 
-// 任务区主按钮 / 主 CTA（定稿、下载语音包）
-const PRIMARY_BTN: CSSProperties = {
-  background: "#1d6fd2", color: "#fff", border: "none", borderRadius: 6,
-  padding: "10px 24px", fontSize: 16, cursor: "pointer",
-};
-const PRIMARY_LINK: CSSProperties = {
-  display: "inline-block", background: "#1d6fd2", color: "#fff",
-  borderRadius: 6, padding: "10px 24px", fontSize: 16,
-  textDecoration: "none", cursor: "pointer",
+// 状态 → StatusBadge tone 映射（frontend/COMPONENTS.md §6）
+const STATUS_TONES: Record<Status, StatusTone> = {
+  available: "success", published: "success", finalized: "success",
+  researching: "info", approved: "info", drafting: "info",
+  publishing: "warning",
+  candidate: "default", shelved: "default", topic: "default",
 };
 
 // 主任务选择（纯函数）：返回当前资产最该做的事，null 表示无主任务（只看指引与血缘）
@@ -108,22 +121,21 @@ function useHashRoute(): string {
   return route;
 }
 
-// 单条左导航项：激活态用背景色区分（效率优先，不做视觉打磨）
+// 单条左导航项：激活态用 Button variant 区分（hash 导航行为不变，效率优先不引 sidebar 全家桶）
 function NavItem(props: { href: string; label: string; active: boolean }) {
   return (
-    <a href={props.href} style={{
-      display: "block", padding: "8px 10px", marginBottom: 4,
-      borderRadius: 6, textDecoration: "none", fontSize: 15,
-      background: props.active ? "#1d6fd2" : "transparent",
-      color: props.active ? "#fff" : "#1d6fd2",
-      fontWeight: props.active ? 600 : 400,
-    }}>{props.label}</a>
+    <a href={props.href}
+       className={cn(buttonVariants({
+         variant: props.active ? "default" : "ghost",
+       }), "w-full justify-start", !props.active && "font-normal")}>
+      {props.label}
+    </a>
   );
 }
 
 function Nav({ route }: { route: string }) {
   return (
-    <nav style={{ width: 150, flexShrink: 0, borderRight: "1px solid #ccc", padding: 12 }}>
+    <nav className="flex w-[150px] shrink-0 flex-col gap-1 border-r p-3">
       {STAGES.map((s) => (
         <NavItem key={s.hash} href={s.hash} label={`${s.icon} ${s.label}`}
                  active={route.startsWith(s.hash)} />
@@ -144,9 +156,9 @@ export default function App() {
   const stageZone: Zone = stage?.zone ?? "source";
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className="flex min-h-screen">
       <Nav route={route} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="min-w-0 flex-1">
         {route.startsWith("#/recipes")
           ? <Recipes />
           : <Assets key={stageZone} stageZone={stageZone} />}
@@ -245,163 +257,197 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const stageInfo = STAGES.find((s) => s.zone === stageZone);
 
   // —— 表单渲染助手：同一表单可能出现在任务区或更多操作，抽成函数避免重复 JSX ——
-  // 全部沿用原有提交逻辑与 run 错误处理，仅移动 DOM 位置。
+  // 全部沿用原有提交逻辑与 run 错误处理，仅替换为 ui 组件（Input/Select/Textarea/Button）。
   const renderDeriveForm = (d: AssetDetail) => (
     <div>
-      <h3>派生发布物</h3>
-      <p style={{ color: "#888", margin: "4px 0" }}>
+      <h3 className="text-sm font-semibold">派生发布物</h3>
+      <p className="my-1 text-sm text-muted-foreground">
         用于登记<strong>已做好的成品文件</strong>（如剪映导出的成片、别处做好的版本）。
         要自动生成封面 → 请先上传图片母版，用它的「渲染封面」。
       </p>
-      <select value={dvPlatform} onChange={(e) => setDvPlatform(e.target.value)}>
-        {["微信公众号", "抖音", "微信视频号", "哔哩哔哩", "官网"].map((p) =>
-          <option key={p}>{p}</option>)}
-      </select>
-      <input placeholder="发布物标题" value={dvTitle}
-             onChange={(e) => setDvTitle(e.target.value)} />
-      <input type="file" onChange={(e) => setDvFile(e.target.files?.[0] ?? null)} />
-      <button onClick={() => void run(async () => {
-        if (!dvFile || !dvTitle) return;
-        await derive(d.id, dvTitle, dvPlatform, dvFile);
-        setDvTitle(""); setDvFile(null);
-        setDetail(await getAsset(d.id)); void refresh();
-      })}>派生</button>
+      <div className="mt-2 flex flex-col gap-2">
+        <Select value={dvPlatform} onValueChange={(v) => setDvPlatform(v as string)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {["微信公众号", "抖音", "微信视频号", "哔哩哔哩", "官网"].map((p) =>
+              <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input placeholder="发布物标题" value={dvTitle}
+               onChange={(e) => setDvTitle(e.target.value)} />
+        <Label>
+          文件
+          <Input type="file" onChange={(e) => setDvFile(e.target.files?.[0] ?? null)} />
+        </Label>
+        <Button onClick={() => void run(async () => {
+          if (!dvFile || !dvTitle) return;
+          await derive(d.id, dvTitle, dvPlatform, dvFile);
+          setDvTitle(""); setDvFile(null);
+          setDetail(await getAsset(d.id)); void refresh();
+        })}>派生</Button>
+      </div>
     </div>
   );
 
   const renderCoverForm = (d: AssetDetail, showDraftNote: boolean) => (
     <div>
-      <h3>渲染封面</h3>
+      <h3 className="text-sm font-semibold">渲染封面</h3>
       {showDraftNote && (
-        <p style={{ color: "#b26b00", margin: "4px 0" }}>建议先定稿，再按平台出图。</p>
+        <p className="my-1 text-sm text-warning">建议先定稿，再按平台出图。</p>
       )}
       {platformMeta === null ? (
-        <span style={{ color: "#888", fontSize: 14 }}>
+        <span className="text-sm text-muted-foreground">
           平台列表不可用（meta 接口未响应）
         </span>
       ) : (
-        <select value={rcPlatform} onChange={(e) => setRcPlatform(e.target.value)}>
-          {coverPlatforms.map((p) => <option key={p}>{p}</option>)}
-        </select>
+        <Select value={rcPlatform} onValueChange={(v) => setRcPlatform(v as string)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {coverPlatforms.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
       )}
-      <select value={rcRecipeId} onChange={(e) => setRcRecipeId(e.target.value)}>
-        <option value="">选择封面模板…</option>
-        {coverRecipes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-      </select>
-      <input placeholder="标题" value={rcTitle}
-             onChange={(e) => setRcTitle(e.target.value)} />
-      <input placeholder="副标题（可选）" value={rcSubtitle}
-             onChange={(e) => setRcSubtitle(e.target.value)} />
-      <input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
-             onChange={(e) => setRcSpec(e.target.value)} />
-      <button onClick={() => void run(async () => {
-        if (!rcRecipeId || !rcTitle) return;
-        let spec: Record<string, unknown> | undefined;
-        if (rcSpec.trim()) spec = JSON.parse(rcSpec);
-        await renderCover(d.id, rcRecipeId, rcPlatform, rcTitle,
-          rcSubtitle || undefined, spec);
-        setRcTitle(""); setRcSubtitle(""); setRcSpec("");
-        setDetail(await getAsset(d.id)); void refresh();
-      })}>渲染</button>
+      <div className="mt-2 flex flex-col gap-2">
+        <Select value={rcRecipeId} onValueChange={(v) => setRcRecipeId(v as string)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">选择封面模板…</SelectItem>
+            {coverRecipes.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input placeholder="标题" value={rcTitle}
+               onChange={(e) => setRcTitle(e.target.value)} />
+        <Input placeholder="副标题（可选）" value={rcSubtitle}
+               onChange={(e) => setRcSubtitle(e.target.value)} />
+        <Input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
+               onChange={(e) => setRcSpec(e.target.value)} />
+        <Button onClick={() => void run(async () => {
+          if (!rcRecipeId || !rcTitle) return;
+          let spec: Record<string, unknown> | undefined;
+          if (rcSpec.trim()) spec = JSON.parse(rcSpec);
+          await renderCover(d.id, rcRecipeId, rcPlatform, rcTitle,
+            rcSubtitle || undefined, spec);
+          setRcTitle(""); setRcSubtitle(""); setRcSpec("");
+          setDetail(await getAsset(d.id)); void refresh();
+        })}>渲染</Button>
+      </div>
     </div>
   );
 
   const renderTextVariantForm = (d: AssetDetail) => (
     <div>
-      <h3>文本变体</h3>
-      <select value={dtRecipeId} onChange={(e) => setDtRecipeId(e.target.value)}>
-        <option value="">选择提示词…</option>
-        {textRecipes.map((r) =>
-          <option key={r.id} value={r.id}>
-            {r.name}（{RECIPE_KIND_LABELS[r.kind]}）
-          </option>)}
-      </select>
-      <input placeholder="变体标题" value={dtTitle}
-             onChange={(e) => setDtTitle(e.target.value)} />
-      <textarea placeholder="附加指令（可选）" value={dtInstructions}
-                onChange={(e) => setDtInstructions(e.target.value)} rows={2}
-                style={{ width: "100%", boxSizing: "border-box", marginTop: 4 }} />
-      <button onClick={() => void run(async () => {
-        if (!dtRecipeId || !dtTitle) return;
-        await deriveText(d.id, dtRecipeId, dtTitle, dtInstructions || undefined);
-        setDtTitle(""); setDtInstructions("");
-        setDetail(await getAsset(d.id)); void refresh();
-      })}>生成变体</button>
+      <h3 className="text-sm font-semibold">文本变体</h3>
+      <div className="mt-2 flex flex-col gap-2">
+        <Select value={dtRecipeId} onValueChange={(v) => setDtRecipeId(v as string)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">选择提示词…</SelectItem>
+            {textRecipes.map((r) =>
+              <SelectItem key={r.id} value={r.id}>
+                {r.name}（{RECIPE_KIND_LABELS[r.kind]}）
+              </SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input placeholder="变体标题" value={dtTitle}
+               onChange={(e) => setDtTitle(e.target.value)} />
+        <Textarea placeholder="附加指令（可选）" value={dtInstructions}
+                  onChange={(e) => setDtInstructions(e.target.value)} rows={2} />
+        <Button onClick={() => void run(async () => {
+          if (!dtRecipeId || !dtTitle) return;
+          await deriveText(d.id, dtRecipeId, dtTitle, dtInstructions || undefined);
+          setDtTitle(""); setDtInstructions("");
+          setDetail(await getAsset(d.id)); void refresh();
+        })}>生成变体</Button>
+      </div>
     </div>
   );
 
   const renderVideoKitForm = (d: AssetDetail) => (
     <div>
-      <h3>生成视频语音包</h3>
-      <select value={vkVoice} onChange={(e) => setVkVoice(e.target.value)}>
-        {voiceOptions.map((v) => <option key={v}>{v}</option>)}
-      </select>
-      <input placeholder="语音包标题（可选）" value={vkTitle}
-             onChange={(e) => setVkTitle(e.target.value)} />
-      <button onClick={() => void run(async () => {
-        await deriveVideoKit(d.id, vkVoice, vkTitle || undefined);
-        setVkTitle("");
-        setDetail(await getAsset(d.id)); void refresh();
-      })}>生成语音包</button>
+      <h3 className="text-sm font-semibold">生成视频语音包</h3>
+      <div className="mt-2 flex flex-col gap-2">
+        <Select value={vkVoice} onValueChange={(v) => setVkVoice(v as string)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {voiceOptions.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input placeholder="语音包标题（可选）" value={vkTitle}
+               onChange={(e) => setVkTitle(e.target.value)} />
+        <Button onClick={() => void run(async () => {
+          await deriveVideoKit(d.id, vkVoice, vkTitle || undefined);
+          setVkTitle("");
+          setDetail(await getAsset(d.id)); void refresh();
+        })}>生成语音包</Button>
+      </div>
     </div>
   );
 
   // 产出初始文稿表单（已立项选题 → 源料区 available 文稿，后端记 topic→source 血缘）
   const renderInitialDraftForm = (d: AssetDetail) => (
     <div>
-      <h3>产出初始文稿</h3>
-      <input placeholder="文稿标题" value={idTitle}
-             onChange={(e) => setIdTitle(e.target.value)} />
-      <input type="file" accept=".md,.docx"
-             onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
-      <button
-        disabled={!idFile || !idTitle}
-        title={!idFile || !idTitle ? "请先填写标题并选择 md/docx 文件" : undefined}
-        style={{ opacity: !idFile || !idTitle ? 0.5 : 1 }}
-        onClick={() => void run(async () => {
-          if (!idFile) return; // 按钮已 disabled，此处仅为类型收窄
-          await initialDraft(d.id, idTitle, idFile);
-          setIdTitle(""); setIdFile(null);
-          setDetail(await getAsset(d.id)); void refresh();
-        })}
-      >产出文稿</button>
-      <p style={{ color: "#5a7396", margin: "8px 0 0" }}>
-        文稿将入素材库并记录与本选题的血缘
-      </p>
+      <h3 className="text-sm font-semibold">产出初始文稿</h3>
+      <div className="mt-2 flex flex-col gap-2">
+        <Input placeholder="文稿标题" value={idTitle}
+               onChange={(e) => setIdTitle(e.target.value)} />
+        <Label>
+          文件（md / docx）
+          <Input type="file" accept=".md,.docx"
+                 onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
+        </Label>
+        <Button
+          disabled={!idFile || !idTitle}
+          title={!idFile || !idTitle ? "请先填写标题并选择 md/docx 文件" : undefined}
+          onClick={() => void run(async () => {
+            if (!idFile) return; // 按钮已 disabled，此处仅为类型收窄
+            await initialDraft(d.id, idTitle, idFile);
+            setIdTitle(""); setIdFile(null);
+            setDetail(await getAsset(d.id)); void refresh();
+          })}
+        >产出文稿</Button>
+        <p className="mt-0 text-sm text-muted-foreground">
+          文稿将入素材库并记录与本选题的血缘
+        </p>
+      </div>
     </div>
   );
 
   const renderPublishRegForm = (d: AssetDetail) => (
     <div>
-      <h3>发布登记</h3>
+      <h3 className="text-sm font-semibold">发布登记</h3>
       {d.published_url ? (
-        <p>
-          已登记：<a href={d.published_url}>{d.published_url}</a>
+        <p className="my-1 text-sm">
+          已登记：<a className="text-primary hover:underline" href={d.published_url}>{d.published_url}</a>
           {d.published_at && <>（{d.published_at.slice(0, 10)}）</>}
         </p>
-      ) : <p>未登记发布链接</p>}
+      ) : <p className="my-1 text-sm">未登记发布链接</p>}
       {typeof d.meta?.platform === "string"
         && entryUrls[d.meta.platform.split("·")[0]] && (
-        <p>
-          <a href={entryUrls[d.meta.platform.split("·")[0]]}
+        <p className="my-1 text-sm">
+          <a className="text-primary hover:underline"
+             href={entryUrls[d.meta.platform.split("·")[0]]}
              target="_blank" rel="noreferrer">
             打开平台上传页（{d.meta.platform}）
           </a>
         </p>
       )}
-      <input placeholder="https://… 发布链接" value={pubUrl}
-             onChange={(e) => setPubUrl(e.target.value)} />
-      <button onClick={() => void run(async () => {
-        if (!pubUrl) return;
-        await publishInfo(d.id, pubUrl);
-        setDetail(await getAsset(d.id)); void refresh();
-      })}>登记</button>
-      {d.published_url && (
-        <button onClick={() => void run(async () => {
-          await clearPublishInfo(d.id);
-          setPubUrl(""); setDetail(await getAsset(d.id)); void refresh();
-        })}>清除</button>
-      )}
+      <div className="mt-2 flex flex-col gap-2">
+        <Input placeholder="https://… 发布链接" value={pubUrl}
+               onChange={(e) => setPubUrl(e.target.value)} />
+        <div className="flex items-center gap-2">
+          <Button onClick={() => void run(async () => {
+            if (!pubUrl) return;
+            await publishInfo(d.id, pubUrl);
+            setDetail(await getAsset(d.id)); void refresh();
+          })}>登记</Button>
+          {d.published_url && (
+            <Button variant="outline" onClick={() => void run(async () => {
+              await clearPublishInfo(d.id);
+              setPubUrl(""); setDetail(await getAsset(d.id)); void refresh();
+            })}>清除</Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 
@@ -413,11 +459,11 @@ function Assets({ stageZone }: { stageZone: Zone }) {
       case "master_text_drafting":
         return (
           <div>
-            <button style={PRIMARY_BTN} onClick={() => void run(async () => {
+            <Button size="lg" onClick={() => void run(async () => {
               await patchStatus(d.id, "finalized");
               setDetail(await getAsset(d.id)); void refresh();
-            })}>定稿</button>
-            <p style={{ color: "#5a7396", margin: "8px 0 0" }}>
+            })}>定稿</Button>
+            <p className="mt-2 text-sm text-muted-foreground">
               定稿后解锁文本变体与语音包
             </p>
           </div>
@@ -435,14 +481,15 @@ function Assets({ stageZone }: { stageZone: Zone }) {
       case "video_kit":
         return (
           <div>
-            <h3>视频语音包</h3>
-            <p style={{ margin: "4px 0" }}>
+            <h3 className="text-sm font-semibold">视频语音包</h3>
+            <p className="my-1 text-sm">
               音色：{typeof d.meta.voice === "string" ? d.meta.voice : "—"}
               {typeof d.meta.sentences === "number"
                 && <> · 分句 {d.meta.sentences} 句</>}
             </p>
             {d.file_url && (
-              <a href={d.file_url} download style={PRIMARY_LINK}>
+              <a href={d.file_url} download
+                 className={cn(buttonVariants({ size: "lg" }), "mt-1")}>
                 下载语音包（zip：音频 + SRT 字幕 + 素材清单）
               </a>
             )}
@@ -453,15 +500,15 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         if (d.status === "candidate" || d.status === "researching") {
           const next = d.status === "candidate" ? "researching" : "approved";
           return (
-            <div>
-              <button style={PRIMARY_BTN} onClick={() => void run(async () => {
+            <div className="flex items-center gap-2">
+              <Button size="lg" onClick={() => void run(async () => {
                 await patchStatus(d.id, next);
                 setDetail(await getAsset(d.id)); void refresh();
-              })}>{d.status === "candidate" ? "推进到调研中" : "已立项"}</button>
-              <button style={{ marginLeft: 8 }} onClick={() => void run(async () => {
+              })}>{d.status === "candidate" ? "推进到调研中" : "已立项"}</Button>
+              <Button size="lg" variant="outline" onClick={() => void run(async () => {
                 await patchStatus(d.id, "shelved");
                 setDetail(await getAsset(d.id)); void refresh();
-              })}>搁置</button>
+              })}>搁置</Button>
             </div>
           );
         }
@@ -469,10 +516,10 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         if (d.status === "shelved") {
           return (
             <div>
-              <button style={PRIMARY_BTN} onClick={() => void run(async () => {
+              <Button size="lg" onClick={() => void run(async () => {
                 await patchStatus(d.id, "candidate");
                 setDetail(await getAsset(d.id)); void refresh();
-              })}>重启为候选</button>
+              })}>重启为候选</Button>
             </div>
           );
         }
@@ -485,212 +532,213 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const taskNode = renderTask(task);
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
-      <h1>ContentHub · {stageInfo?.label ?? ZONE_LABELS[stageZone]}</h1>
-      <div style={{
-        background: "#eef4fb", border: "1px solid #bcd4ec", borderRadius: 6,
-        padding: "8px 12px", marginBottom: 12, fontSize: 14,
-      }}>
-        <strong>内容流水线：</strong>
-        {["① 上传母版/源料", "② 定稿", "③ 渲染封面 / 文本变体", "④ 视频语音包", "⑤ 发布登记"].map(
-          (s, i) => (
-            <span key={s}>
-              {i > 0 && <span style={{ margin: "0 6px", color: "#7a9cc4" }}>→</span>}
-              <strong>{s}</strong>
-            </span>
-          ))}
-        <div style={{ color: "#5a7396", marginTop: 4 }}>
-          点击列表任意一行打开详情；详情面板按资产状态给出「下一步」指引。常用路径：文章母版 →
-          文本变体出「口播稿」→ 语音包三件套进剪映；图片母版 → 渲染封面出多平台图。
-        </div>
-      </div>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+    <main className="mx-auto max-w-[1100px] p-4">
+      <PageHeader
+        title="ContentHub · 四阶段工作台"
+        subtitle={`当前阶段：${stageInfo?.label ?? ZONE_LABELS[stageZone]}`}
+        description="内容流水线：① 上传母版/源料 → ② 定稿 → ③ 渲染封面 / 文本变体 → ④ 视频语音包 → ⑤ 发布登记"
+      />
+      <p className="mt-2 text-sm text-muted-foreground">
+        点击列表任意一行打开详情；详情面板按资产状态给出「下一步」指引。常用路径：文章母版 →
+        文本变体出「口播稿」→ 语音包三件套进剪映；图片母版 → 渲染封面出多平台图。
+      </p>
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {/* 阶段页固定 zone：左导航即区域选择器，列表查询强制带 zone */}
-      <section style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input placeholder="搜索标题/正文…" value={q}
+      <section className="mb-3 mt-4 flex gap-2">
+        <Input placeholder="搜索标题/正文…" value={q}
                onChange={(e) => setQ(e.target.value)} />
-        <button onClick={() => void refresh()}>搜索</button>
+        <Button variant="outline" onClick={() => void refresh()}>搜索</Button>
       </section>
 
       {/* 状态快捷筛选 chips：点击即过滤并立即刷新（无需按「搜索」），可与关键词叠加 */}
-      <section style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+      <section className="mb-3 flex items-center gap-2">
         {statusFilters.map((f) => {
           const active = status === f.value;
           return (
-            <button key={f.value || "all"} onClick={() => setStatus(f.value)}
-                    style={{
-                      borderRadius: 999, padding: "4px 14px", fontSize: 14,
-                      cursor: "pointer",
-                      border: active ? "1px solid #1d6fd2" : "1px solid #bcd4ec",
-                      background: active ? "#1d6fd2" : "#fff",
-                      color: active ? "#fff" : "#1d6fd2",
-                    }}>
+            <Button key={f.value || "all"} size="sm"
+                    variant={active ? "default" : "outline"}
+                    onClick={() => setStatus(f.value)}>
               {f.label}
-            </button>
+            </Button>
           );
         })}
       </section>
 
       {/* 上传表单仅素材库/选题策划/内容制作三页显示；上传目标即当前阶段区 */}
       {stageZone !== "publish" && (
-        <section style={{ border: "1px solid #ccc", padding: 12, marginBottom: 12 }}>
-          <h2>上传资产（入库到{stageInfo?.label ?? ZONE_LABELS[stageZone]}）</h2>
-          <input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
-          <input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
-          <button
-            disabled={!upFile || !upTitle}
-            title={!upFile || !upTitle ? "请先填写标题并选择文件" : undefined}
-            style={{ opacity: !upFile || !upTitle ? 0.5 : 1 }}
-            onClick={() => void run(async () => {
-              if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
-              const a = await uploadAsset(stageZone, upTitle, upFile);
-              const unlock =
-                ["markdown", "docx"].includes(a.content_type) ? "定稿后可生成文本变体，派生口播稿后可出语音包"
-                : a.content_type === "image" ? "定稿后可用「渲染封面」按平台出图"
-                : "文件已归档；成品建议在母版详情里以「派生发布物」登记";
-              setUpResult(`✓ 已入库为 ${ZONE_LABELS[a.zone]}·${STATUS_LABELS[a.status]}（${a.content_type}）——${unlock}`);
-              setUpTitle(""); setUpFile(null); void refresh();
-            })}
-          >上传</button>
-          {(!upFile || !upTitle) && (
-            <span style={{ marginLeft: 8, color: "#888" }}>填写标题并选择文件后可上传</span>
-          )}
-          {upResult && (
-            <div style={{
-              background: "#f0f7ee", border: "1px solid #c4dcc0", borderRadius: 6,
-              padding: "6px 10px", marginTop: 8, fontSize: 14,
-            }}>{upResult}</div>
-          )}
-        </section>
+        <Card className="mb-3">
+          <CardHeader>
+            <CardTitle>上传资产（入库到{stageInfo?.label ?? ZONE_LABELS[stageZone]}）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-2">
+              <Input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
+              <Label>
+                文件
+                <Input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  disabled={!upFile || !upTitle}
+                  title={!upFile || !upTitle ? "请先填写标题并选择文件" : undefined}
+                  onClick={() => void run(async () => {
+                    if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
+                    const a = await uploadAsset(stageZone, upTitle, upFile);
+                    const unlock =
+                      ["markdown", "docx"].includes(a.content_type) ? "定稿后可生成文本变体，派生口播稿后可出语音包"
+                      : a.content_type === "image" ? "定稿后可用「渲染封面」按平台出图"
+                      : "文件已归档；成品建议在母版详情里以「派生发布物」登记";
+                    setUpResult(`✓ 已入库为 ${ZONE_LABELS[a.zone]}·${STATUS_LABELS[a.status]}（${a.content_type}）——${unlock}`);
+                    setUpTitle(""); setUpFile(null); void refresh();
+                  })}
+                >上传</Button>
+                {(!upFile || !upTitle) && (
+                  <span className="text-sm text-muted-foreground">填写标题并选择文件后可上传</span>
+                )}
+              </div>
+            </div>
+            {upResult && (
+              <div className="mt-2 rounded-md border border-stat-3-soft bg-stat-3-soft px-2.5 py-1.5 text-sm text-stat-3">
+                {upResult}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th align="left">标题</th><th align="left">区域</th>
-            <th align="left">状态</th><th align="left">更新时间</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>标题</TableHead><TableHead>区域</TableHead>
+            <TableHead>状态</TableHead><TableHead>更新时间</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {assets.map((a) => (
-            <tr key={a.id} onClick={() => void run(async () => {
+            <TableRow key={a.id} className="cursor-pointer" onClick={() => void run(async () => {
               const d = await getAsset(a.id);
               setDetail(d);
               setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
               setIdTitle(""); setIdFile(null);  // 同理重置初始文稿表单
-            })}
-                style={{ cursor: "pointer", borderTop: "1px solid #eee" }}>
-              <td>{a.title}</td>
-              <td>{ZONE_LABELS[a.zone]}</td>
-              <td>{STATUS_LABELS[a.status]}</td>
-              <td>{a.updated_at.slice(0, 10)}</td>
-            </tr>
+            })}>
+              <TableCell>{a.title}</TableCell>
+              <TableCell><Badge variant="outline">{ZONE_LABELS[a.zone]}</Badge></TableCell>
+              <TableCell><StatusBadge tone={STATUS_TONES[a.status]}>{STATUS_LABELS[a.status]}</StatusBadge></TableCell>
+              <TableCell>{a.updated_at.slice(0, 10)}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
+      {assets.length === 0 && <EmptyState variant="list" size="sm" />}
 
       {detail && (
-        <section ref={detailRef} style={{ border: "1px solid #369", padding: 12, marginTop: 16 }}>
-          <h2>{detail.title}</h2>
-          <div style={{
-            background: "#f0f7ee", border: "1px solid #c4dcc0", borderRadius: 6,
-            padding: "6px 10px", marginBottom: 8, fontSize: 14,
-          }}>
-            <strong>下一步：</strong>{nextStepHint(detail)}
-          </div>
-          <p>
-            {ZONE_LABELS[detail.zone]} · {STATUS_LABELS[detail.status]} · {detail.content_type}
-            {detail.source_url && <> · <a href={detail.source_url}>源链接</a></>}
-            {detail.file_url && <> · <a href={detail.file_url}>文件</a></>}
-          </p>
-
-          {/* 任务区：主任务唯一默认展开；无主任务/无可渲染表单则不显示 */}
-          {task && taskNode && (
-            <div style={{
-              border: "1px solid #9db8d8", background: "#f5f9ff", borderRadius: 6,
-              padding: "10px 12px", margin: "8px 0 12px",
-            }}>
-              <div style={{ fontSize: 13, color: "#5a7396", marginBottom: 6 }}>当前任务</div>
-              {taskNode}
-            </div>
-          )}
-
-          {(detail.content_type === "markdown" || detail.content_type === "docx") && detail.text_content && (
-            <div style={{ marginTop: 8 }}>
-              <h3>生成正文</h3>
-              <pre style={{ maxHeight: 300, overflow: "auto", whiteSpace: "pre-wrap",
-                            background: "#f6f6f6", padding: 12 }}>
-                {detail.text_content}
-              </pre>
-            </div>
-          )}
-
-          <div style={{ marginTop: 8 }}>
-            <h3>血缘</h3>
-            <p>上游：{detail.upstream.map((d) => d.source_asset_id).join("、") || "无"}</p>
-            <p>下游：{detail.downstream.map((d) => d.derived_asset_id).join("、") || "无"}</p>
-          </div>
-
-          <details style={{ marginTop: 8 }}>
-            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-              更多操作（手动状态流转 / 派生发布物 / 补链 / 删除）
-            </summary>
-            <div style={{ marginTop: 8 }}>
-              <div>
-                状态流转：
-                {(ZONE_TRANSITIONS[detail.zone]?.[detail.status] ?? []).map((s) => (
-                  <button key={s} onClick={() => void run(async () => {
-                    await patchStatus(detail.id, s);
-                    setDetail(await getAsset(detail.id)); void refresh();
-                  })}>{STATUS_LABELS[s]}</button>
-                ))}
+        <section ref={detailRef} className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{detail.title}</CardTitle>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="outline">{ZONE_LABELS[detail.zone]}</Badge>
+                <StatusBadge tone={STATUS_TONES[detail.status]}>{STATUS_LABELS[detail.status]}</StatusBadge>
+                <span>{detail.content_type}</span>
+                {detail.source_url && <a className="text-primary hover:underline" href={detail.source_url}>源链接</a>}
+                {detail.file_url && <a className="text-primary hover:underline" href={detail.file_url}>文件</a>}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* nextStepHint：保留彩色提示条（效率优先，不引 Alert 组件） */}
+              <div className="mb-2 rounded-md border border-stat-3-soft bg-stat-3-soft px-2.5 py-1.5 text-sm text-stat-3">
+                <strong>下一步：</strong>{nextStepHint(detail)}
               </div>
 
-              {detail.zone === "master" && (
-                <div style={{ marginTop: 8 }}>{renderDeriveForm(detail)}</div>
+              {/* 任务区：主任务唯一默认展开；无主任务/无可渲染表单则不显示 */}
+              {task && taskNode && (
+                <div className="mb-3 rounded-md border bg-muted/50 p-3">
+                  <div className="mb-1.5 text-xs text-muted-foreground">当前任务</div>
+                  {taskNode}
+                </div>
               )}
 
-              {/* 图片母版已进入发布流程时，渲染封面不再是主任务，保留在此 */}
-              {detail.zone === "master" && detail.content_type === "image"
-                && task !== "master_image_finalized" && task !== "master_image_drafting" && (
-                <div style={{ marginTop: 8 }}>{renderCoverForm(detail, false)}</div>
+              {(detail.content_type === "markdown" || detail.content_type === "docx") && detail.text_content && (
+                <div className="mt-2">
+                  <h3 className="text-sm font-semibold">生成正文</h3>
+                  <pre className="mt-1 max-h-[300px] overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">
+                    {detail.text_content}
+                  </pre>
+                </div>
               )}
 
-              {/* 文本母版已进入发布流程时，文本变体保留在此 */}
-              {detail.zone === "master" && detail.text_content
-                && (detail.status === "publishing" || detail.status === "published") && (
-                <div style={{ marginTop: 8 }}>{renderTextVariantForm(detail)}</div>
-              )}
-
-              {/* 非「发布中」主任务的发布资产，登记/清除入口保留在此 */}
-              {detail.zone === "publish" && task !== "publish_publishing" && (
-                <div style={{ marginTop: 8 }}>{renderPublishRegForm(detail)}</div>
-              )}
-
-              {/* 已发布的文本发布物，语音包生成入口保留在此 */}
-              {detail.zone === "publish" && detail.content_type === "markdown"
-                && detail.text_content && task !== "publish_markdown" && (
-                <div style={{ marginTop: 8 }}>{renderVideoKitForm(detail)}</div>
-              )}
-
-              <div style={{ marginTop: 8 }}>
-                <h3>补链</h3>
-                <input placeholder="补链：上游资产 UUID" value={linkSource}
-                       onChange={(e) => setLinkSource(e.target.value)} />
-                <button onClick={() => void run(async () => {
-                  await linkDerivation(detail.id, linkSource);
-                  setLinkSource(""); setDetail(await getAsset(detail.id));
-                })}>补链</button>
+              <div className="mt-2">
+                <h3 className="text-sm font-semibold">血缘</h3>
+                <p className="text-sm">上游：{detail.upstream.map((d) => d.source_asset_id).join("、") || "无"}</p>
+                <p className="text-sm">下游：{detail.downstream.map((d) => d.derived_asset_id).join("、") || "无"}</p>
               </div>
 
-              <div style={{ marginTop: 8 }}>
-                <button onClick={() => void run(async () => {
-                  await deleteAsset(detail.id); setDetail(null); void refresh();
-                })}>删除资产</button>
-              </div>
-            </div>
-          </details>
+              <details className="mt-2">
+                <summary className="cursor-pointer font-medium">
+                  更多操作（手动状态流转 / 派生发布物 / 补链 / 删除）
+                </summary>
+                <div className="mt-2">
+                  <div className="flex flex-wrap items-center gap-1">
+                    状态流转：
+                    {(ZONE_TRANSITIONS[detail.zone]?.[detail.status] ?? []).map((s) => (
+                      <Button key={s} size="sm" variant="outline" onClick={() => void run(async () => {
+                        await patchStatus(detail.id, s);
+                        setDetail(await getAsset(detail.id)); void refresh();
+                      })}>{STATUS_LABELS[s]}</Button>
+                    ))}
+                  </div>
+
+                  {detail.zone === "master" && (
+                    <div className="mt-2">{renderDeriveForm(detail)}</div>
+                  )}
+
+                  {/* 图片母版已进入发布流程时，渲染封面不再是主任务，保留在此 */}
+                  {detail.zone === "master" && detail.content_type === "image"
+                    && task !== "master_image_finalized" && task !== "master_image_drafting" && (
+                    <div className="mt-2">{renderCoverForm(detail, false)}</div>
+                  )}
+
+                  {/* 文本母版已进入发布流程时，文本变体保留在此 */}
+                  {detail.zone === "master" && detail.text_content
+                    && (detail.status === "publishing" || detail.status === "published") && (
+                    <div className="mt-2">{renderTextVariantForm(detail)}</div>
+                  )}
+
+                  {/* 非「发布中」主任务的发布资产，登记/清除入口保留在此 */}
+                  {detail.zone === "publish" && task !== "publish_publishing" && (
+                    <div className="mt-2">{renderPublishRegForm(detail)}</div>
+                  )}
+
+                  {/* 已发布的文本发布物，语音包生成入口保留在此 */}
+                  {detail.zone === "publish" && detail.content_type === "markdown"
+                    && detail.text_content && task !== "publish_markdown" && (
+                    <div className="mt-2">{renderVideoKitForm(detail)}</div>
+                  )}
+
+                  <div className="mt-2">
+                    <h3 className="text-sm font-semibold">补链</h3>
+                    <div className="mt-2 flex flex-col gap-2">
+                      <Input placeholder="补链：上游资产 UUID" value={linkSource}
+                             onChange={(e) => setLinkSource(e.target.value)} />
+                      <div>
+                        <Button onClick={() => void run(async () => {
+                          await linkDerivation(detail.id, linkSource);
+                          setLinkSource(""); setDetail(await getAsset(detail.id));
+                        })}>补链</Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2">
+                    <Button variant="destructive" onClick={() => void run(async () => {
+                      await deleteAsset(detail.id); setDetail(null); void refresh();
+                    })}>删除资产</Button>
+                  </div>
+                </div>
+              </details>
+            </CardContent>
+          </Card>
         </section>
       )}
     </main>
