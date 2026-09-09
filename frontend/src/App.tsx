@@ -308,7 +308,10 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         </Select>
       )}
       <div className="mt-2 flex flex-col gap-2">
-        <Select value={rcRecipeId} onValueChange={(v) => setRcRecipeId(v as string)}>
+        {/* items：让 SelectValue（触发器）按 label 显示，而非原始 value（UUID/空串） */}
+        <Select value={rcRecipeId} onValueChange={(v) => setRcRecipeId(v as string)}
+                items={[{ value: "", label: "选择封面模板…" },
+                        ...coverRecipes.map((r) => ({ value: r.id, label: r.name }))]}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="">选择封面模板…</SelectItem>
@@ -338,7 +341,13 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     <div>
       <h3 className="text-sm font-semibold">文本变体</h3>
       <div className="mt-2 flex flex-col gap-2">
-        <Select value={dtRecipeId} onValueChange={(v) => setDtRecipeId(v as string)}>
+        {/* items：触发器显示模板名（含类型），而非原始 value（UUID/空串） */}
+        <Select value={dtRecipeId} onValueChange={(v) => setDtRecipeId(v as string)}
+                items={[{ value: "", label: "选择提示词…" },
+                        ...textRecipes.map((r) => ({
+                          value: r.id,
+                          label: `${r.name}（${RECIPE_KIND_LABELS[r.kind]}）`,
+                        }))]}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="">选择提示词…</SelectItem>
@@ -366,7 +375,9 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     <div>
       <h3 className="text-sm font-semibold">生成视频语音包</h3>
       <div className="mt-2 flex flex-col gap-2">
-        <Select value={vkVoice} onValueChange={(v) => setVkVoice(v as string)}>
+        {/* items：音色展示名即 value（labels==values），显式声明保证触发器稳定解析 */}
+        <Select value={vkVoice} onValueChange={(v) => setVkVoice(v as string)}
+                items={voiceOptions.map((v) => ({ value: v, label: v }))}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {voiceOptions.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}

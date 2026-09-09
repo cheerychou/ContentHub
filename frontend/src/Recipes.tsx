@@ -51,7 +51,10 @@ export default function Recipes() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <section className="mb-3 mt-4 flex gap-2">
-        <Select value={kind} onValueChange={(v) => setKind(v as string)}>
+        {/* items：触发器显示类型标签，而非原始 value（空串/英文枚举） */}
+        <Select value={kind} onValueChange={(v) => setKind(v as string)}
+                items={[{ value: "", label: "全部类型" },
+                        ...KINDS.map((k) => ({ value: k, label: RECIPE_KIND_LABELS[k] }))]}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="">全部类型</SelectItem>
@@ -67,7 +70,9 @@ export default function Recipes() {
         </CardHeader>
         <CardContent>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Select value={nkKind} onValueChange={(v) => setNkKind(v as RecipeKind)}>
+            {/* items：触发器显示类型标签，而非原始 value（英文枚举） */}
+            <Select value={nkKind} onValueChange={(v) => setNkKind(v as RecipeKind)}
+                    items={KINDS.map((k) => ({ value: k, label: RECIPE_KIND_LABELS[k] }))}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {KINDS.map((k) => <SelectItem key={k} value={k}>{RECIPE_KIND_LABELS[k]}</SelectItem>)}
