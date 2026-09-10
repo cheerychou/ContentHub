@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import {
-  clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
+  clearPublishInfo, deleteAsset, attrsPatch, derive, deriveText, deriveVideoKit, getAsset,
   fetchMetaStats, fetchPlatformMeta, initialDraft, linkDerivation, listAssets,
   listRecipes, patchStatus, publishInfo, renderCover, uploadAsset,
   type MetaStats, type PlatformMeta,
@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StandardListPage } from "@/components/common/standard-list-page";
 import { type Column } from "@/components/common/data-table";
 import { SegmentTabsA } from "@/components/common/segment-tabs";
-import { AttrSummary } from "@/components/common/attr-summary";
+import { AttrSummary, formatDuration } from "@/components/common/attr-summary";
 import {
   DetailPageLayout, DetailSection,
 } from "@/components/common/detail-page-layout";
@@ -66,6 +66,42 @@ const TYPE_TABS: { value: string; label: string }[] = [
   { value: "audio", label: "音频" },
   { value: "link", label: "链接" },
 ];
+
+// 类型属性区（M7 Task 4）：仅可抽取/可补录属性的五类内容显示
+const ATTR_TYPES = ["image", "video", "audio", "markdown", "docx"];
+
+// 属性键 → 中文标签（M7 Task 4）；映射外的自由键原样展示
+const ATTR_LABELS: Record<string, string> = {
+  width: "宽", height: "高", format: "格式", duration_seconds: "时长",
+  word_count: "字数", language: "语言", author: "作者",
+  has_subtitle: "字幕", color_mode: "色彩模式",
+};
+
+// 语言代码 → 中文（与补录 Dialog 语言选项一致）
+const LANGUAGE_LABELS: Record<string, string> = {
+  zh: "中文", en: "英文", mixed: "混合", other: "其他",
+};
+
+// meta.attrs → 可渲染行（过滤空值：空串/null 不占 InfoField 行，布尔 false 保留）
+function attrRows(
+  meta: Record<string, unknown> | null | undefined
+): [string, unknown][] {
+  const attrs = (meta?.attrs ?? {}) as Record<string, unknown>;
+  return Object.entries(attrs)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "");
+}
+
+// 属性值格式化（沿用列表属性摘要列风格：时长 mm:ss；语言/布尔转中文，其余标量直出）
+function formatAttrValue(key: string, v: unknown): string {
+  if (key === "duration_seconds" && typeof v === "number" && Number.isFinite(v))
+    return formatDuration(v);
+  if (key === "language" && typeof v === "string" && LANGUAGE_LABELS[v])
+    return LANGUAGE_LABELS[v];
+  if (typeof v === "boolean") return v ? "是" : "否";
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
 
 // 应用骨架导航（M6）：驾驶舱 + 四阶段 + 提示词与模板；countOf 从 /api/meta/stats 取徽标计数
 const NAV: {
@@ -313,6 +349,21 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     setDialogError("");
     setIdOpen(true);
   };
+  // 补录属性 Dialog（M7 Task 4）：按类型预置字段 + 一个自由键值对；
+  // 打开即重置（同一规则，见各 open* 函数），提交 PATCH attrs 深合并。
+  const [atOpen, setAtOpen] = useState(false);
+  const [atAuthor, setAtAuthor] = useState("");
+  const [atLanguage, setAtLanguage] = useState("");   // ""=不设置，值 zh/en/mixed/other
+  const [atSub, setAtSub] = useState("");             // 视频：""=不设置，"true"/"false"
+  const [atColorMode, setAtColorMode] = useState(""); // 图片：色彩模式
+  const [atKey, setAtKey] = useState("");             // 自由键值对（仅值填了才提交）
+  const [atValue, setAtValue] = useState("");
+  const openAtDialog = () => {
+    setAtAuthor(""); setAtLanguage(""); setAtSub(""); setAtColorMode("");
+    setAtKey(""); setAtValue("");
+    setDialogError("");
+    setAtOpen(true);
+  };
   // 派生表单（低频，按 Dialog 分层决策保留在「更多操作」内联）
   const [dvTitle, setDvTitle] = useState("");
   const [dvPlatform, setDvPlatform] = useState("微信公众号");
@@ -384,6 +435,13 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const task = detail ? primaryTask(detail) : null;
   const stageInfo = STAGES.find((s) => s.zone === stageZone);
   const stagePage = STAGE_PAGES[stageZone];
+  // 补录按钮可用性（M7 Task 4）：至少一项已填（自由键值对须填了值才计数）
+  const atCanSubmit = detail ? Boolean(
+    atAuthor.trim() || atLanguage
+    || (detail.content_type === "video" && atSub !== "")
+    || (detail.content_type === "image" && atColorMode.trim())
+    || atValue.trim()
+  ) : false;
 
   // 表格列（M6 Task 2）：标题（text-sm font-medium + 文件名/类型辅助行）、状态、更新时间
   // M7 Task 3：持有文件的三区在「状态」后追加「属性」摘要列（meta.attrs 渲染，缺省 "—"）
@@ -694,6 +752,25 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                                        href={detail.published_url}>{detail.published_url}</a>} />
                 )}
               </DetailSection>
+
+              {/* 类型属性（M7 Task 4）：上传自动抽取 + 人工补录的 meta.attrs；
+                  空时引导文案，区块 action 提供补录入口 */}
+              {ATTR_TYPES.includes(detail.content_type) && (
+                <DetailSection title="类型属性" columns={3}
+                  action={<Button size="sm" variant="outline"
+                                  onClick={openAtDialog}>补录</Button>}>
+                  {attrRows(detail.meta).length > 0 ? (
+                    attrRows(detail.meta).map(([k, v]) => (
+                      <InfoField key={k} label={ATTR_LABELS[k] ?? k}
+                                 value={formatAttrValue(k, v)} />
+                    ))
+                  ) : (
+                    <p className="md:col-span-3 text-sm text-muted-foreground">
+                      暂无属性（上传时自动抽取，或用补录添加）
+                    </p>
+                  )}
+                </DetailSection>
+              )}
 
               {/* 当前任务：nextStepHint + 主任务（表单类任务 = TaskLauncher 打开 Dialog） */}
               <DetailSection title="当前任务" columns={2}>
@@ -1011,6 +1088,81 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                 <p className="mt-0 text-sm text-muted-foreground">
                   文稿将入素材库并记录与本选题的血缘
                 </p>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* 补录属性 Dialog（M7 Task 4）：按类型预置作者/语言/字幕(视频)/色彩模式(图片)
+              + 一个自由键值对；仅提交已填字段（has_subtitle 为布尔），失败错误就地展示 */}
+          <Dialog open={atOpen} onOpenChange={setAtOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>补录属性</DialogTitle>
+                <DialogDescription>
+                  人工补充素材属性：同名键以补录为准，其余属性保留。
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-2 flex flex-col gap-2">
+                <Input placeholder="作者（可选）" value={atAuthor}
+                       onChange={(e) => setAtAuthor(e.target.value)} />
+                {/* items：触发器按 label 显示语言，而非 zh/en 原始值 */}
+                <Select value={atLanguage} onValueChange={(v) => setAtLanguage(v as string)}
+                        items={[{ value: "", label: "语言（可选）" },
+                                ...Object.entries(LANGUAGE_LABELS).map(([v, label]) => ({
+                                  value: v, label,
+                                }))]}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">语言（可选）</SelectItem>
+                    {Object.entries(LANGUAGE_LABELS).map(([v, label]) =>
+                      <SelectItem key={v} value={v}>{label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {detail.content_type === "video" && (
+                  <Select value={atSub} onValueChange={(v) => setAtSub(v as string)}
+                          items={[{ value: "", label: "字幕（可选）" },
+                                  { value: "true", label: "含字幕" },
+                                  { value: "false", label: "无字幕" }]}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">字幕（可选）</SelectItem>
+                      <SelectItem value="true">含字幕</SelectItem>
+                      <SelectItem value="false">无字幕</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {detail.content_type === "image" && (
+                  <Input placeholder="色彩模式（可选，如 RGB）" value={atColorMode}
+                         onChange={(e) => setAtColorMode(e.target.value)} />
+                )}
+                <div className="flex items-center gap-2">
+                  <Input placeholder="自定义键（填值时必填）" value={atKey}
+                         onChange={(e) => setAtKey(e.target.value)} />
+                  <Input placeholder="自定义值（可选）" value={atValue}
+                         onChange={(e) => setAtValue(e.target.value)} />
+                </div>
+                {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
+                <Button
+                  disabled={!atCanSubmit}
+                  title={!atCanSubmit ? "至少填写一项属性" : undefined}
+                  onClick={() => void runDialog(async () => {
+                    const attrs: Record<string, unknown> = {};
+                    if (atAuthor.trim()) attrs.author = atAuthor.trim();
+                    if (atLanguage) attrs.language = atLanguage;
+                    if (detail.content_type === "video" && atSub !== "")
+                      attrs.has_subtitle = atSub === "true";
+                    if (detail.content_type === "image" && atColorMode.trim())
+                      attrs.color_mode = atColorMode.trim();
+                    if (atValue.trim()) {
+                      if (!atKey.trim())
+                        throw new Error("自定义属性填写了值时须填写键名");
+                      attrs[atKey.trim()] = atValue.trim();
+                    }
+                    await attrsPatch(detail.id, attrs);
+                    setDetail(await getAsset(detail.id)); void refresh();
+                    setAtOpen(false); // 提交成功关闭：详情已就地刷新
+                  })}
+                >补录</Button>
               </div>
             </DialogContent>
           </Dialog>

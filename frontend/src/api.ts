@@ -53,6 +53,19 @@ export async function patchStatus(id: string, status: string): Promise<Asset> {
   return resp.json();
 }
 
+// 人工补录素材属性（M7 Task 4）：attrs 深合并入 meta.attrs，同名键以补录为准
+export async function attrsPatch(
+  id: string, attrs: Record<string, unknown>
+): Promise<Asset> {
+  const resp = await fetch(`${base}/assets/${seg(id)}/attrs`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ attrs }),
+  });
+  if (!resp.ok) throw new Error(await errDetail(resp));
+  return resp.json();
+}
+
 // 立项初始文稿（M4）：已立项选题 → 源料区 available 文稿（后端记录 topic→source 血缘）
 export async function initialDraft(
   topicId: string, title: string, file: File
