@@ -313,3 +313,44 @@ def test_patch_attrs_404_for_missing_asset(client):
         json={"attrs": {"author": "周大波"}},
     )
     assert resp.status_code == 404
+
+
+# ---------- M7 列表按素材类型过滤（content_type 逗号分隔多值） ----------
+
+def _upload_docx(client, title="Word 稿", name="稿.docx"):
+    from io import BytesIO
+    from docx import Document
+    buf = BytesIO()
+    doc = Document()
+    doc.add_paragraph("第一段：途虎学什么。")
+    doc.save(buf)
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": title},
+        files={"file": (name, buf.getvalue(),
+                        "application/vnd.openxmlformats-officedocument"
+                        ".wordprocessingml.document")},
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+def test_list_filter_content_type(client):
+    """M7 类型筛选：md+docx+png 三资产——多值命中两类、单值命中一类、缺省返回全部。"""
+    client.post("/api/assets", data={"zone": "master", "title": "md 文稿"},
+                files=_md_file("a.md"))
+    _upload_docx(client, title="docx 文稿", name="b.docx")
+    client.post("/api/assets", data={"zone": "master", "title": "png 封面"},
+                files={"file": ("c.png", PNG_1X1, "image/png")})
+
+    def types(params):
+        resp = client.get("/api/assets", params=params)
+        assert resp.status_code == 200
+        return sorted(a["content_type"] for a in resp.json())
+
+    # 多值（逗号分隔）：恰命中 markdown 与 docx 两类，不含 png
+    assert types({"zone": "master", "content_type": "markdown,docx"}) \
+        == ["docx", "markdown"]
+    # 单值：仅命中一类
+    assert types({"zone": "master", "content_type": "image"}) == ["image"]
+    # 缺省：不过滤，三类齐全
+    assert types({"zone": "master"}) == ["docx", "image", "markdown"]

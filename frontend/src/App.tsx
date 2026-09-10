@@ -22,6 +22,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { StandardListPage } from "@/components/common/standard-list-page";
 import { type Column } from "@/components/common/data-table";
+import { SegmentTabsA } from "@/components/common/segment-tabs";
+import { AttrSummary } from "@/components/common/attr-summary";
 import {
   DetailPageLayout, DetailSection,
 } from "@/components/common/detail-page-layout";
@@ -52,6 +54,18 @@ const STAGE_PAGES: Record<Zone, { title: string; description: string; action?: s
   master: { title: "内容制作", description: "母版创作与定稿：成品的单一可信来源", action: "上传母版" },
   publish: { title: "内容发布", description: "多平台发布登记与收口：内容到达读者的最后一公里" },
 };
+
+// 素材类型 Tab（M7 Task 3）：value 为逗号分隔 content_type（后端多值过滤），
+// "" = 全部；与状态 chips、关键词搜索可组合。持有文件的三区
+// （素材库/内容制作/内容发布）启用；选题策划页保持原样。
+const TYPE_TABS: { value: string; label: string }[] = [
+  { value: "", label: "全部" },
+  { value: "markdown,docx", label: "文章" },
+  { value: "image", label: "图片" },
+  { value: "video", label: "视频" },
+  { value: "audio", label: "音频" },
+  { value: "link", label: "链接" },
+];
 
 // 应用骨架导航（M6）：驾驶舱 + 四阶段 + 提示词与模板；countOf 从 /api/meta/stats 取徽标计数
 const NAV: {
@@ -228,6 +242,8 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
+  // 类型 Tab（M7）：""=全部；value 直接透传后端 content_type 多值参数
+  const [contentType, setContentType] = useState("");
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const [error, setError] = useState("");
   // Dialog 内提交错误（终审修复）：run 写页面级 error，渲染在 modal 遮罩之后不可见；
@@ -329,12 +345,12 @@ function Assets({ stageZone }: { stageZone: Zone }) {
 
   const refresh = useCallback(async () => {
     try {
-      setAssets(await listAssets({ zone: stageZone, status, q }));
+      setAssets(await listAssets({ zone: stageZone, status, q, content_type: contentType }));
       setError("");
     } catch (e) {
       setError(String(e));
     }
-  }, [stageZone, status, q]);
+  }, [stageZone, status, q, contentType]);
 
   // 统一捕获变更类操作的异常，避免 unhandled rejection 静默失败
   const run = useCallback(async (fn: () => Promise<void>) => {
@@ -370,6 +386,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const stagePage = STAGE_PAGES[stageZone];
 
   // 表格列（M6 Task 2）：标题（text-sm font-medium + 文件名/类型辅助行）、状态、更新时间
+  // M7 Task 3：持有文件的三区在「状态」后追加「属性」摘要列（meta.attrs 渲染，缺省 "—"）
   const columns: Column<Asset>[] = [
     {
       key: "title", title: "标题",
@@ -386,6 +403,12 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         <StatusBadge tone={STATUS_TONES[a.status]}>{STATUS_LABELS[a.status]}</StatusBadge>
       ),
     },
+    ...(stageZone !== "topic" ? [{
+      key: "attrs", title: "属性",
+      render: (a: Asset) => (
+        <AttrSummary contentType={a.content_type} attrs={a.meta?.attrs} />
+      ),
+    } satisfies Column<Asset>] : []),
     { key: "updated_at", title: "更新时间", render: (a) => a.updated_at.slice(0, 10) },
   ];
 
@@ -560,6 +583,11 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         onSearchChange={(v) => setQ(String(v.q ?? ""))}
         onSearch={() => void refresh()}
         onReset={() => setQ("")}
+        headerContent={stageZone !== "topic" && (
+          // 类型 Tab（M7）：与状态 chips 可组合；idPrefix 与状态 SegmentTabsA 区分避免 id 冲突
+          <SegmentTabsA idPrefix="type-tabs"
+            items={TYPE_TABS} value={contentType} onChange={setContentType} />
+        )}
         statusFilter={{ options: statusFilters, value: status, onChange: setStatus }}
         data={assets}
         columns={columns}

@@ -11,7 +11,9 @@ async function errDetail(resp: Response): Promise<string> {
 }
 
 export async function listAssets(params: {
-  zone?: string; status?: string; q?: string; limit?: number;
+  zone?: string; status?: string; q?: string;
+  content_type?: string; // 逗号分隔多值（M7 类型 Tab，如 "markdown,docx"）
+  limit?: number;
 }): Promise<Asset[]> {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v) as [string, string][]

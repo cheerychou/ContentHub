@@ -204,6 +204,7 @@ def list_assets(
     zone: AssetZone | None = None,
     status: AssetStatus | None = None,
     q: str | None = None,
+    content_type: str | None = Query(None),
     limit: int = Query(50, ge=0, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -213,6 +214,12 @@ def list_assets(
         stmt = stmt.where(Asset.zone == zone)
     if status:
         stmt = stmt.where(Asset.status == status)
+    if content_type:
+        # M7 类型 Tab：逗号分隔多值（如 "markdown,docx"）→ IN 过滤；
+        # 去空白容忍 "markdown, docx" 写法，全空串视为未传。
+        values = [v.strip() for v in content_type.split(",") if v.strip()]
+        if values:
+            stmt = stmt.where(Asset.content_type.in_(values))
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
