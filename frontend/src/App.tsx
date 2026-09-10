@@ -103,6 +103,15 @@ function formatAttrValue(key: string, v: unknown): string {
   return String(v);
 }
 
+// 复制资产完整编号（沿用 InfoField.handleCopy 模式：clipboard API + try/catch console.error）
+async function copyAssetId(id: string) {
+  try {
+    await navigator.clipboard.writeText(id);
+  } catch (err) {
+    console.error("复制失败:", err);
+  }
+}
+
 // 应用骨架导航（M6）：驾驶舱 + 四阶段 + 提示词与模板；countOf 从 /api/meta/stats 取徽标计数
 const NAV: {
   key: string; label: string;
@@ -413,6 +422,14 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     try { setDialogError(""); await fn(); } catch (e) { setDialogError(e instanceof Error ? e.message : String(e)); }
   }, []);
 
+  // 打开详情（行点击与操作列「查看」共用，2026-09-10 反馈迭代提取为具名函数；逻辑逐字沿用原内联实现）
+  const openDetail = (a: Asset) => void run(async () => {
+    const d = await getAsset(a.id);
+    setDetail(d);
+    setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
+    setIdTitle(""); setIdFile(null);  // 同理重置初始文稿表单
+  });
+
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     void listRecipes("cover_template").then(setCoverRecipes).catch(() => setCoverRecipes([]));
@@ -443,11 +460,26 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     || atValue.trim()
   ) : false;
 
-  // 表格列（M6 Task 2）：标题（text-sm font-medium + 文件名/类型辅助行）、状态、更新时间
+  // 表格列（M6 Task 2）：编号（短ID+更新时间两行）、名称、状态、属性、操作（2026-09-10 反馈迭代）
   // M7 Task 3：持有文件的三区在「状态」后追加「属性」摘要列（meta.attrs 渲染，缺省 "—"）
   const columns: Column<Asset>[] = [
     {
-      key: "title", title: "标题",
+      key: "id", title: "编号", width: "w-28",
+      render: (a) => (
+        <div className="min-w-0">
+          <p
+            className="font-mono text-sm cursor-pointer hover:text-primary transition-colors"
+            title="点击复制完整编号"
+            onClick={(e) => { e.stopPropagation(); void copyAssetId(a.id); }}
+          >
+            {a.id.slice(0, 8)}
+          </p>
+          <p className="text-xs text-muted-foreground">{a.updated_at.slice(0, 10)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "title", title: "名称",
       render: (a) => (
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{a.title}</p>
@@ -467,7 +499,17 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         <AttrSummary contentType={a.content_type} attrs={a.meta?.attrs} />
       ),
     } satisfies Column<Asset>] : []),
-    { key: "updated_at", title: "更新时间", render: (a) => a.updated_at.slice(0, 10) },
+    {
+      key: "actions", title: "操作", width: "w-36",
+      render: (a) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm"
+                  onClick={(e) => { e.stopPropagation(); openDetail(a); }}>查看</Button>
+          <Button variant="ghost" size="sm"
+                  onClick={(e) => { e.stopPropagation(); void copyAssetId(a.id); }}>复制</Button>
+        </div>
+      ),
+    },
   ];
 
   // —— 表单渲染助手：同一表单可能出现在任务区或更多操作，抽成函数避免重复 JSX ——
@@ -651,12 +693,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         columns={columns}
         error={error}
         onRetry={() => void refresh()}
-        onRowClick={(a) => void run(async () => {
-          const d = await getAsset(a.id);
-          setDetail(d);
-          setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
-          setIdTitle(""); setIdFile(null);  // 同理重置初始文稿表单
-        })}
+        onRowClick={openDetail}
         getRowKey={(a) => a.id}
       />
 
