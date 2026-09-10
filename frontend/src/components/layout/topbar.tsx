@@ -74,6 +74,23 @@ export function TopBar({ title, className }: TopBarProps) {
           />
           {healthy === null ? "检测中" : healthy ? "在线" : "离线"}
         </span>
+        {/* 用户信息（mock）：单用户自托管，静态展示当前维护者身份 */}
+        <div
+          data-slot="user-info"
+          title="zhoudabo · 管理员"
+          className="flex items-center gap-2 border-l pl-3"
+        >
+          <div
+            aria-hidden
+            className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+          >
+            周
+          </div>
+          <div className="hidden leading-tight sm:block">
+            <p className="text-sm font-medium">zhoudabo</p>
+            <p className="text-xs text-muted-foreground">管理员</p>
+          </div>
+        </div>
       </div>
     </header>
   );

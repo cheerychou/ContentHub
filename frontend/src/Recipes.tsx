@@ -79,7 +79,14 @@ export default function Recipes() {
         </Badge>
       ),
     },
-    { key: "description", title: "描述", render: (r) => r.description || "—" },
+    {
+      key: "description", title: "描述",
+      render: (r) => (
+        <p className="max-w-xl whitespace-normal text-sm leading-relaxed text-muted-foreground">
+          {r.description || "—"}
+        </p>
+      ),
+    },
     { key: "updated_at", title: "更新时间", render: (r) => r.updated_at.slice(0, 10) },
     {
       key: "actions", title: "操作", width: "w-24",
