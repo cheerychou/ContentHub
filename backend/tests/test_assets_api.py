@@ -251,3 +251,65 @@ def test_upload_small_video_memory_path_extracts_attrs(client, monkeypatch):
     assert resp.status_code == 201
     assert resp.json()["meta"]["attrs"] == {
         "format": "h264", "width": 320, "height": 240, "duration_seconds": 1.0}
+
+
+# ---------- M7 人工补录 attrs PATCH ----------
+
+def _upload_md(client, text="# 标题\n\n途虎养车供应链视角，共两句。"):
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "文稿"},
+        files=_md_file("文稿.md", text),
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+def test_patch_attrs_adds_manual_key_preserving_auto_keys(client):
+    asset = _upload_md(client)
+    auto = asset["meta"]["attrs"]
+    resp = client.patch(f"/api/assets/{asset['id']}/attrs",
+                        json={"attrs": {"author": "周大波"}})
+    assert resp.status_code == 200
+    attrs = resp.json()["meta"]["attrs"]
+    assert attrs["author"] == "周大波"          # 补录键写入
+    assert attrs["word_count"] == auto["word_count"]  # 自动键保留
+    assert attrs["language"] == auto["language"]
+
+
+def test_patch_attrs_manual_key_wins_on_conflict(client):
+    """补录键与自动键同名时以补录为准（用户人工输入优先）。"""
+    asset = _upload_md(client)
+    resp = client.patch(f"/api/assets/{asset['id']}/attrs",
+                        json={"attrs": {"language": "en"}})
+    assert resp.status_code == 200
+    attrs = resp.json()["meta"]["attrs"]
+    assert attrs["language"] == "en"
+    assert attrs["word_count"] == asset["meta"]["attrs"]["word_count"]
+
+
+def test_patch_attrs_deep_merges_nested_dicts(client):
+    asset = _upload_md(client)
+    asset_id = asset["id"]
+    assert client.patch(f"/api/assets/{asset_id}/attrs",
+                        json={"attrs": {"manual": {"platform": "wx"}}}
+                        ).status_code == 200
+    resp = client.patch(f"/api/assets/{asset_id}/attrs",
+                        json={"attrs": {"manual": {"author": "周"}}})
+    assert resp.status_code == 200
+    assert resp.json()["meta"]["attrs"]["manual"] == {
+        "platform": "wx", "author": "周"}  # 深合并：嵌套键互不覆盖
+
+
+def test_patch_attrs_empty_object_rejected_422(client):
+    asset = _upload_md(client)
+    for bad in ({"attrs": {}}, {"attrs": "不是对象"}, {}):
+        resp = client.patch(f"/api/assets/{asset['id']}/attrs", json=bad)
+        assert resp.status_code == 422, bad
+
+
+def test_patch_attrs_404_for_missing_asset(client):
+    resp = client.patch(
+        "/api/assets/00000000-0000-0000-0000-000000000000/attrs",
+        json={"attrs": {"author": "周大波"}},
+    )
+    assert resp.status_code == 404

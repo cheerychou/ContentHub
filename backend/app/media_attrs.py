@@ -107,6 +107,20 @@ def text_attrs(text: str) -> dict:
     return {"word_count": n, "language": language}
 
 
+def merge_attrs(base: dict, override: dict) -> dict:
+    """深合并属性字典：override 同名键优先（人工补录 > 自动抽取），base 其余键保留。
+
+    嵌套 dict 递归合并；标量/列表等整体覆盖。返回新 dict，不改入参。
+    """
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = merge_attrs(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def extract_attrs(content_type: str, *, data: bytes | None = None,
                   text: str | None = None, tmp_path: str | None = None) -> dict:
     """按 content_type 分派抽取；任何异常吞掉返回 {}（上传永不因解析失败中断）。

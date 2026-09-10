@@ -34,6 +34,7 @@ from ..schemas import (
     AssetDetail,
     AssetExternalCreate,
     AssetOut,
+    AttrsPatch,
     DerivationCreate,
     DerivationOut,
     DeriveTextCreate,
@@ -244,6 +245,20 @@ def update_status(asset_id: uuid.UUID, body: StatusUpdate,
             f"允许 → {sorted(s.value for s in allowed)}",
         )
     asset.status = body.status
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+@router.patch("/{asset_id}/attrs", response_model=AssetOut)
+def patch_asset_attrs(asset_id: uuid.UUID, body: AttrsPatch,
+                      db: Session = Depends(get_db)):
+    """M7 人工补录素材属性：深合并入 meta.attrs，补录键与自动键同名时以补录为准。"""
+    asset = get_asset_or_404(db, asset_id)
+    meta = dict(asset.meta or {})
+    meta["attrs"] = media_attrs.merge_attrs(
+        dict(meta.get("attrs") or {}), body.attrs)
+    asset.meta = meta  # 赋新 dict 触发 JSONB 变更检测
     db.commit()
     db.refresh(asset)
     return asset

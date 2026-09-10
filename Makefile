@@ -1,4 +1,4 @@
-.PHONY: dev test preflight cleanup-orphans up down import
+.PHONY: dev test preflight cleanup-orphans backfill-attrs up down import
 
 FILTER ?= --dry-run
 
@@ -15,6 +15,9 @@ preflight:      ## 本地质量门禁（无 CI 红线下的替代闸）：文档
 
 cleanup-orphans: ## 对象存储孤儿清理：默认 dry-run；make cleanup-orphans FILTER=--delete 真删
 	cd backend && .venv/bin/python -m scripts.cleanup_orphans $(FILTER)
+
+backfill-attrs: ## 存量资产属性回填：默认 dry-run；make backfill-attrs FILTER="--apply" 写入（--force 重抽）
+	cd backend && .venv/bin/python -m scripts.backfill_attrs $(FILTER)
 
 up:             ## 全栈构建并启动
 	docker compose up -d --build

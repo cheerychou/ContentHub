@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, HttpUrl
+from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
 
 from .models import AssetStatus, AssetZone, RecipeKind
 
@@ -93,6 +93,19 @@ class DeriveTextCreate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: AssetStatus
+
+
+class AttrsPatch(BaseModel):
+    """M7 人工补录素材属性：须为非空对象，深合并入 meta.attrs（同名键以补录为准）。"""
+
+    attrs: dict
+
+    @field_validator("attrs")
+    @classmethod
+    def _attrs_non_empty(cls, v: dict) -> dict:
+        if not v:
+            raise ValueError("attrs 须为非空对象")
+        return v
 
 
 class PublishInfoUpdate(BaseModel):
