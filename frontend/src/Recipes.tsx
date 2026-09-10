@@ -28,6 +28,9 @@ export default function Recipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [kind, setKind] = useState<string>("");
   const [error, setError] = useState("");
+  // Dialog 内提交错误（终审修复）：页面级 error 渲染在 modal 遮罩之后不可见，
+  // 新建 Dialog 提交改用 runDialog → dialogError，在 Dialog 内就地展示。
+  const [dialogError, setDialogError] = useState("");
 
   // 新建表单
   const [nkKind, setNkKind] = useState<RecipeKind>("cover_template");
@@ -38,6 +41,7 @@ export default function Recipes() {
   const [nkOpen, setNkOpen] = useState(false);
   const openCreateDialog = () => {
     setNkKind("cover_template"); setNkName(""); setNkDesc(""); setNkContent("");
+    setDialogError("");
     setNkOpen(true);
   };
 
@@ -54,6 +58,11 @@ export default function Recipes() {
 
   const run = useCallback(async (fn: () => Promise<void>) => {
     try { setError(""); await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, []);
+
+  // 同 run，但错误写入 dialogError（Dialog 内就地展示，不被遮罩挡住）
+  const runDialog = useCallback(async (fn: () => Promise<void>) => {
+    try { setDialogError(""); await fn(); } catch (e) { setDialogError(e instanceof Error ? e.message : String(e)); }
   }, []);
 
   // 表格列（M6 Task 2）：名称 / 类型 Badge / 描述 / 更新时间 / 操作（删除）
@@ -98,7 +107,8 @@ export default function Recipes() {
         getRowKey={(r) => r.id}
       />
 
-      {/* 新建 Dialog（M6 Task 2）：表单原逻辑搬入；创建成功后字段清空、列表即时刷新 */}
+      {/* 新建 Dialog（M6 Task 2）：表单原逻辑搬入；创建成功关闭 Dialog 并刷新列表
+          （终审修复：失败错误在 Dialog 内就地展示；空提交由 disabled 按钮拦截） */}
       <Dialog open={nkOpen} onOpenChange={setNkOpen}>
         <DialogContent>
           <DialogHeader>
@@ -123,15 +133,23 @@ export default function Recipes() {
             <Textarea placeholder="模板 / 提示词内容（支持 {title} 等占位符）"
                       value={nkContent} onChange={(e) => setNkContent(e.target.value)}
                       rows={5} />
-            <div className="mt-2 flex justify-end">
-              <Button onClick={() => void run(async () => {
-                if (!nkName || !nkContent) return;
-                await createRecipe({
-                  kind: nkKind, name: nkName, content: nkContent,
-                  ...(nkDesc ? { description: nkDesc } : {}),
-                });
-                setNkName(""); setNkDesc(""); setNkContent(""); void refresh();
-              })}>创建</Button>
+            {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                disabled={!nkName || !nkContent}
+                title={!nkName || !nkContent ? "请先填写名称与内容" : undefined}
+                onClick={() => void runDialog(async () => {
+                  await createRecipe({
+                    kind: nkKind, name: nkName, content: nkContent,
+                    ...(nkDesc ? { description: nkDesc } : {}),
+                  });
+                  setNkName(""); setNkDesc(""); setNkContent(""); void refresh();
+                  setNkOpen(false); // 创建成功关闭 Dialog（对齐详情表单 Dialog 同一规则）
+                })}
+              >创建</Button>
+              {(!nkName || !nkContent) && (
+                <span className="text-sm text-muted-foreground">填写名称与内容后可创建</span>
+              )}
             </div>
           </div>
         </DialogContent>

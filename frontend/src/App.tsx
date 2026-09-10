@@ -230,6 +230,9 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const [error, setError] = useState("");
+  // Dialog 内提交错误（终审修复）：run 写页面级 error，渲染在 modal 遮罩之后不可见；
+  // Dialog 内提交改用 runDialog → dialogError，在各 DialogContent 内就地展示。
+  const [dialogError, setDialogError] = useState("");
   const detailRef = useRef<HTMLElement | null>(null);
 
   // 状态快捷筛选 chips：全部 + 本阶段词表（label 复用 STATUS_LABELS，与表格状态列一致）
@@ -251,6 +254,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const [upOpen, setUpOpen] = useState(false);
   const openUploadDialog = () => {
     setUpTitle(""); setUpFile(null); setUpResult("");
+    setDialogError("");
     setUpOpen(true);
   };
   // 详情表单 Dialog 开合（M6 Task 3）：打开即重置该表单 state（同一规则，见各 open* 函数）；
@@ -262,30 +266,35 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     // 直接提交会被后端 422 拒绝）；meta 不可用时退回历史默认。
     setRcPlatform(coverPlatforms[0] ?? "微信公众号");
     setRcRecipeId(""); setRcTitle(""); setRcSubtitle(""); setRcSpec("");
+    setDialogError("");
     setRcOpen(true);
   };
   // 文本变体
   const [dtOpen, setDtOpen] = useState(false);
   const openDtDialog = () => {
     setDtRecipeId(""); setDtTitle(""); setDtInstructions("");
+    setDialogError("");
     setDtOpen(true);
   };
   // 视频语音包
   const [vkOpen, setVkOpen] = useState(false);
   const openVkDialog = () => {
     setVkVoice("晓晓（女）"); setVkTitle("");
+    setDialogError("");
     setVkOpen(true);
   };
   // 发布登记
   const [pubOpen, setPubOpen] = useState(false);
   const openPubDialog = () => {
     setPubUrl(detail?.published_url ?? ""); // 与旧行为一致：以已登记链接为初值（可改写覆盖）
+    setDialogError("");
     setPubOpen(true);
   };
   // 产出初始文稿
   const [idOpen, setIdOpen] = useState(false);
   const openIdDialog = () => {
     setIdTitle(""); setIdFile(null);
+    setDialogError("");
     setIdOpen(true);
   };
   // 派生表单（低频，按 Dialog 分层决策保留在「更多操作」内联）
@@ -330,6 +339,11 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   // 统一捕获变更类操作的异常，避免 unhandled rejection 静默失败
   const run = useCallback(async (fn: () => Promise<void>) => {
     try { setError(""); await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, []);
+
+  // 同 run，但错误写入 dialogError（Dialog 内就地展示，不被遮罩挡住）
+  const runDialog = useCallback(async (fn: () => Promise<void>) => {
+    try { setDialogError(""); await fn(); } catch (e) { setDialogError(e instanceof Error ? e.message : String(e)); }
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -578,11 +592,12 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                 文件
                 <Input type="file" onChange={(e) => setUpFile(e.target.files?.[0] ?? null)} />
               </Label>
+              {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
               <div className="flex items-center gap-2">
                 <Button
                   disabled={!upFile || !upTitle}
                   title={!upFile || !upTitle ? "请先填写标题并选择文件" : undefined}
-                  onClick={() => void run(async () => {
+                  onClick={() => void runDialog(async () => {
                     if (!upFile) return; // 按钮已 disabled，此处仅为类型收窄
                     const a = await uploadAsset(stageZone, upTitle, upFile);
                     const unlock =
@@ -807,7 +822,8 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                        onChange={(e) => setRcSubtitle(e.target.value)} />
                 <Input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
                        onChange={(e) => setRcSpec(e.target.value)} />
-                <Button onClick={() => void run(async () => {
+                {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
+                <Button onClick={() => void runDialog(async () => {
                   if (!rcRecipeId || !rcTitle) return;
                   let spec: Record<string, unknown> | undefined;
                   if (rcSpec.trim()) spec = JSON.parse(rcSpec);
@@ -849,7 +865,8 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                        onChange={(e) => setDtTitle(e.target.value)} />
                 <Textarea placeholder="附加指令（可选）" value={dtInstructions}
                           onChange={(e) => setDtInstructions(e.target.value)} rows={2} />
-                <Button onClick={() => void run(async () => {
+                {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
+                <Button onClick={() => void runDialog(async () => {
                   if (!dtRecipeId || !dtTitle) return;
                   await deriveText(detail.id, dtRecipeId, dtTitle, dtInstructions || undefined);
                   setDtTitle(""); setDtInstructions("");
@@ -878,7 +895,8 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                 </Select>
                 <Input placeholder="语音包标题（可选）" value={vkTitle}
                        onChange={(e) => setVkTitle(e.target.value)} />
-                <Button onClick={() => void run(async () => {
+                {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
+                <Button onClick={() => void runDialog(async () => {
                   await deriveVideoKit(detail.id, vkVoice, vkTitle || undefined);
                   setVkTitle("");
                   setDetail(await getAsset(detail.id)); void refresh();
@@ -914,15 +932,16 @@ function Assets({ stageZone }: { stageZone: Zone }) {
               <div className="mt-2 flex flex-col gap-2">
                 <Input placeholder="https://… 发布链接" value={pubUrl}
                        onChange={(e) => setPubUrl(e.target.value)} />
+                {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => void run(async () => {
+                  <Button onClick={() => void runDialog(async () => {
                     if (!pubUrl) return;
                     await publishInfo(detail.id, pubUrl);
                     setDetail(await getAsset(detail.id)); void refresh();
                     setPubOpen(false);
                   })}>登记</Button>
                   {detail.published_url && (
-                    <Button variant="outline" onClick={() => void run(async () => {
+                    <Button variant="outline" onClick={() => void runDialog(async () => {
                       await clearPublishInfo(detail.id);
                       setPubUrl(""); setDetail(await getAsset(detail.id)); void refresh();
                       setPubOpen(false);
@@ -949,10 +968,11 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                   <Input type="file" accept=".md,.docx"
                          onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
                 </Label>
+                {dialogError && <p style={{ color: "crimson", margin: "4px 0" }}>{dialogError}</p>}
                 <Button
                   disabled={!idFile || !idTitle}
                   title={!idFile || !idTitle ? "请先填写标题并选择 md/docx 文件" : undefined}
-                  onClick={() => void run(async () => {
+                  onClick={() => void runDialog(async () => {
                     if (!idFile) return; // 按钮已 disabled，此处仅为类型收窄
                     await initialDraft(detail.id, idTitle, idFile);
                     setIdTitle(""); setIdFile(null);
