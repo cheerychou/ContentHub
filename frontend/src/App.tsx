@@ -6,20 +6,20 @@ import {
   type MetaStats, type PlatformMeta,
 } from "./api";
 import {
-  RECIPE_KIND_LABELS, STATUS_LABELS, ZONE_LABELS, ZONE_STATUSES,
-  ZONE_TRANSITIONS, type Asset, type AssetDetail, type Recipe, type Status, type Zone,
+  RECIPE_KIND_LABELS, STATUS_LABELS, STATUS_TONES, ZONE_LABELS,
+  ZONE_STATUSES, ZONE_TRANSITIONS,
+  type Asset, type AssetDetail, type Recipe, type Zone,
 } from "./types";
 import Recipes from "./Recipes";
+import Dashboard from "./pages/dashboard";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PageHeader } from "@/components/common/page-header";
 import { StandardListPage } from "@/components/common/standard-list-page";
 import { type Column } from "@/components/common/data-table";
 import {
@@ -104,13 +104,7 @@ function nextStepHint(d: AssetDetail): string {
   return "已登记发布 ✓。全流程完成。";
 }
 
-// 状态 → StatusBadge tone 映射（frontend/COMPONENTS.md §6）
-const STATUS_TONES: Record<Status, StatusTone> = {
-  available: "success", published: "success", finalized: "success",
-  researching: "info", approved: "info", drafting: "info",
-  publishing: "warning",
-  candidate: "default", shelved: "default", topic: "default",
-};
+// 状态 → StatusBadge tone 映射见 types.ts STATUS_TONES（frontend/COMPONENTS.md §6）
 
 // 主任务选择（纯函数）：返回当前资产最该做的事，null 表示无主任务（只看指引与血缘）
 // 主任务在「任务区」默认展开；其余能力一律收进「更多操作」，不删除任何功能。
@@ -154,23 +148,7 @@ function useHashRoute(): string {
   return route;
 }
 
-// 驾驶舱占位页（真实看板在 M6 任务 4 实现）
-function DashboardPlaceholder() {
-  return (
-    <div className="mx-auto max-w-[1100px]">
-      <PageHeader
-        title="驾驶舱"
-        description="内容供应链全流程数据看板 · 建设中（本迭代后续任务交付）"
-      />
-      <Card className="mt-4">
-        <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          资产总量、各区分布与产出趋势图表将在此呈现——数据接口
-          GET /api/meta/stats 已就绪。
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+// 驾驶舱页（M6 Task 4）：src/pages/dashboard.tsx——指标卡/流水线漏斗/最近动态
 
 // 任务卡启动器（M6 Task 3）：表单 Dialog 化后，任务卡只保留一句话说明 + 打开按钮；
 // 具体表单在对应 Dialog 内，提交逻辑逐字沿用原实现。
@@ -232,7 +210,7 @@ export default function App() {
           <TopBar title={pageTitle} />
           <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
             {route.startsWith("#/dashboard") ? (
-              <DashboardPlaceholder />
+              <Dashboard />
             ) : route.startsWith("#/recipes") ? (
               <Recipes />
             ) : (

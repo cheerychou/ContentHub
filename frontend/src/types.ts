@@ -94,6 +94,16 @@ export const ZONE_LABELS: Record<Zone, string> = {
   publish: "发布态",
 };
 
+// 状态 → StatusBadge tone 映射（frontend/COMPONENTS.md §6；映射留在调用侧，组件保持通用）
+import type { StatusTone } from "@/components/ui/status-badge";
+
+export const STATUS_TONES: Record<Status, StatusTone> = {
+  available: "success", published: "success", finalized: "success",
+  researching: "info", approved: "info", drafting: "info",
+  publishing: "warning",
+  candidate: "default", shelved: "default", topic: "default",
+};
+
 export const STATUS_LABELS: Record<Status, string> = {
   available: "可用",
   candidate: "候选",

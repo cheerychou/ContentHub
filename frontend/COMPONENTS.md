@@ -34,6 +34,7 @@ frontend/
         │   ├── button.tsx / badge.tsx / card.tsx / ...
         │   └── variants/     # cva 变体定义分离（见 §3）
         ├── common/            # 业务公共组件：跨页面复用、可含业务语义（PageHeader 等）
+        ├── data-display/      # 数据展示组件（自 CDD3 移植）：Statistic 等
         └── ...
 ```
 
@@ -44,6 +45,7 @@ frontend/
 | `components/ui/` | shadcn 原子组件 | Button、Badge、Card、Select | 换一个项目仍然成立 |
 | `components/ui/variants/` | cva 变体定义 | ButtonVariants.ts、BadgeVariants.ts | 纯 cva 表，不渲染 JSX |
 | `components/common/` | 业务公共组件 | PageHeader、（后续）ConfirmDialog 等 | 含业务文案/语义，但跨页面通用 |
+| `components/data-display/` | 数据展示组件 | Statistic | 纯呈现数值卡，自 CDD3 移植（裁剪 trend） |
 
 > 注：variants 放在 `ui/variants/`（ui 内部），与 CDD3 platform-web 的实际布局一致；
 > 规划文本中「components/variants」即指此处。

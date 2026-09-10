@@ -11,7 +11,7 @@ async function errDetail(resp: Response): Promise<string> {
 }
 
 export async function listAssets(params: {
-  zone?: string; status?: string; q?: string;
+  zone?: string; status?: string; q?: string; limit?: number;
 }): Promise<Asset[]> {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v) as [string, string][]
