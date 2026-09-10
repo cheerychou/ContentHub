@@ -11,9 +11,8 @@ import {
 } from "./types";
 import Recipes from "./Recipes";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,6 +22,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/common/page-header";
 import { StandardListPage } from "@/components/common/standard-list-page";
 import { type Column } from "@/components/common/data-table";
+import {
+  DetailPageLayout, DetailSection,
+} from "@/components/common/detail-page-layout";
+import { InfoField } from "@/components/common/info-field";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -169,6 +172,21 @@ function DashboardPlaceholder() {
   );
 }
 
+// 任务卡启动器（M6 Task 3）：表单 Dialog 化后，任务卡只保留一句话说明 + 打开按钮；
+// 具体表单在对应 Dialog 内，提交逻辑逐字沿用原实现。
+function TaskLauncher({ description, buttonText, onOpen }: {
+  description: string;
+  buttonText: string;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm">{description}</p>
+      <Button onClick={onOpen}>{buttonText}</Button>
+    </div>
+  );
+}
+
 export default function App() {
   const route = useHashRoute();
   // #/ 重定向到 #/dashboard（默认进入驾驶舱，按 M6 信息架构）
@@ -257,7 +275,42 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     setUpTitle(""); setUpFile(null); setUpResult("");
     setUpOpen(true);
   };
-  // 派生表单
+  // 详情表单 Dialog 开合（M6 Task 3）：打开即重置该表单 state（同一规则，见各 open* 函数）；
+  // 提交成功后关闭 Dialog——详情区已就地刷新，与上传 Dialog「留驻展示入库结果」不同。
+  // 渲染封面
+  const [rcOpen, setRcOpen] = useState(false);
+  const openRcDialog = () => {
+    // 平台默认取 meta 首个合法封面平台（历史默认「微信公众号」不在 cover 词表，
+    // 直接提交会被后端 422 拒绝）；meta 不可用时退回历史默认。
+    setRcPlatform(coverPlatforms[0] ?? "微信公众号");
+    setRcRecipeId(""); setRcTitle(""); setRcSubtitle(""); setRcSpec("");
+    setRcOpen(true);
+  };
+  // 文本变体
+  const [dtOpen, setDtOpen] = useState(false);
+  const openDtDialog = () => {
+    setDtRecipeId(""); setDtTitle(""); setDtInstructions("");
+    setDtOpen(true);
+  };
+  // 视频语音包
+  const [vkOpen, setVkOpen] = useState(false);
+  const openVkDialog = () => {
+    setVkVoice("晓晓（女）"); setVkTitle("");
+    setVkOpen(true);
+  };
+  // 发布登记
+  const [pubOpen, setPubOpen] = useState(false);
+  const openPubDialog = () => {
+    setPubUrl(detail?.published_url ?? ""); // 与旧行为一致：以已登记链接为初值（可改写覆盖）
+    setPubOpen(true);
+  };
+  // 产出初始文稿
+  const [idOpen, setIdOpen] = useState(false);
+  const openIdDialog = () => {
+    setIdTitle(""); setIdFile(null);
+    setIdOpen(true);
+  };
+  // 派生表单（低频，按 Dialog 分层决策保留在「更多操作」内联）
   const [dvTitle, setDvTitle] = useState("");
   const [dvPlatform, setDvPlatform] = useState("微信公众号");
   const [dvFile, setDvFile] = useState<File | null>(null);
@@ -377,180 +430,15 @@ function Assets({ stageZone }: { stageZone: Zone }) {
     </div>
   );
 
-  const renderCoverForm = (d: AssetDetail, showDraftNote: boolean) => (
-    <div>
-      <h3 className="text-sm font-semibold">渲染封面</h3>
-      {showDraftNote && (
-        <p className="my-1 text-sm text-warning">建议先定稿，再按平台出图。</p>
-      )}
-      {platformMeta === null ? (
-        <span className="text-sm text-muted-foreground">
-          平台列表不可用（meta 接口未响应）
-        </span>
-      ) : (
-        <Select value={rcPlatform} onValueChange={(v) => setRcPlatform(v as string)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {coverPlatforms.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
-      <div className="mt-2 flex flex-col gap-2">
-        {/* items：让 SelectValue（触发器）按 label 显示，而非原始 value（UUID/空串） */}
-        <Select value={rcRecipeId} onValueChange={(v) => setRcRecipeId(v as string)}
-                items={[{ value: "", label: "选择封面模板…" },
-                        ...coverRecipes.map((r) => ({ value: r.id, label: r.name }))]}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">选择封面模板…</SelectItem>
-            {coverRecipes.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input placeholder="标题" value={rcTitle}
-               onChange={(e) => setRcTitle(e.target.value)} />
-        <Input placeholder="副标题（可选）" value={rcSubtitle}
-               onChange={(e) => setRcSubtitle(e.target.value)} />
-        <Input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
-               onChange={(e) => setRcSpec(e.target.value)} />
-        <Button onClick={() => void run(async () => {
-          if (!rcRecipeId || !rcTitle) return;
-          let spec: Record<string, unknown> | undefined;
-          if (rcSpec.trim()) spec = JSON.parse(rcSpec);
-          await renderCover(d.id, rcRecipeId, rcPlatform, rcTitle,
-            rcSubtitle || undefined, spec);
-          setRcTitle(""); setRcSubtitle(""); setRcSpec("");
-          setDetail(await getAsset(d.id)); void refresh();
-        })}>渲染</Button>
-      </div>
-    </div>
-  );
-
-  const renderTextVariantForm = (d: AssetDetail) => (
-    <div>
-      <h3 className="text-sm font-semibold">文本变体</h3>
-      <div className="mt-2 flex flex-col gap-2">
-        {/* items：触发器显示模板名（含类型），而非原始 value（UUID/空串） */}
-        <Select value={dtRecipeId} onValueChange={(v) => setDtRecipeId(v as string)}
-                items={[{ value: "", label: "选择提示词…" },
-                        ...textRecipes.map((r) => ({
-                          value: r.id,
-                          label: `${r.name}（${RECIPE_KIND_LABELS[r.kind]}）`,
-                        }))]}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">选择提示词…</SelectItem>
-            {textRecipes.map((r) =>
-              <SelectItem key={r.id} value={r.id}>
-                {r.name}（{RECIPE_KIND_LABELS[r.kind]}）
-              </SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input placeholder="变体标题" value={dtTitle}
-               onChange={(e) => setDtTitle(e.target.value)} />
-        <Textarea placeholder="附加指令（可选）" value={dtInstructions}
-                  onChange={(e) => setDtInstructions(e.target.value)} rows={2} />
-        <Button onClick={() => void run(async () => {
-          if (!dtRecipeId || !dtTitle) return;
-          await deriveText(d.id, dtRecipeId, dtTitle, dtInstructions || undefined);
-          setDtTitle(""); setDtInstructions("");
-          setDetail(await getAsset(d.id)); void refresh();
-        })}>生成变体</Button>
-      </div>
-    </div>
-  );
-
-  const renderVideoKitForm = (d: AssetDetail) => (
-    <div>
-      <h3 className="text-sm font-semibold">生成视频语音包</h3>
-      <div className="mt-2 flex flex-col gap-2">
-        {/* items：音色展示名即 value（labels==values），显式声明保证触发器稳定解析 */}
-        <Select value={vkVoice} onValueChange={(v) => setVkVoice(v as string)}
-                items={voiceOptions.map((v) => ({ value: v, label: v }))}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {voiceOptions.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input placeholder="语音包标题（可选）" value={vkTitle}
-               onChange={(e) => setVkTitle(e.target.value)} />
-        <Button onClick={() => void run(async () => {
-          await deriveVideoKit(d.id, vkVoice, vkTitle || undefined);
-          setVkTitle("");
-          setDetail(await getAsset(d.id)); void refresh();
-        })}>生成语音包</Button>
-      </div>
-    </div>
-  );
-
-  // 产出初始文稿表单（已立项选题 → 源料区 available 文稿，后端记 topic→source 血缘）
-  const renderInitialDraftForm = (d: AssetDetail) => (
-    <div>
-      <h3 className="text-sm font-semibold">产出初始文稿</h3>
-      <div className="mt-2 flex flex-col gap-2">
-        <Input placeholder="文稿标题" value={idTitle}
-               onChange={(e) => setIdTitle(e.target.value)} />
-        <Label>
-          文件（md / docx）
-          <Input type="file" accept=".md,.docx"
-                 onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
-        </Label>
-        <Button
-          disabled={!idFile || !idTitle}
-          title={!idFile || !idTitle ? "请先填写标题并选择 md/docx 文件" : undefined}
-          onClick={() => void run(async () => {
-            if (!idFile) return; // 按钮已 disabled，此处仅为类型收窄
-            await initialDraft(d.id, idTitle, idFile);
-            setIdTitle(""); setIdFile(null);
-            setDetail(await getAsset(d.id)); void refresh();
-          })}
-        >产出文稿</Button>
-        <p className="mt-0 text-sm text-muted-foreground">
-          文稿将入素材库并记录与本选题的血缘
-        </p>
-      </div>
-    </div>
-  );
-
-  const renderPublishRegForm = (d: AssetDetail) => (
-    <div>
-      <h3 className="text-sm font-semibold">发布登记</h3>
-      {d.published_url ? (
-        <p className="my-1 text-sm">
-          已登记：<a className="text-primary hover:underline" href={d.published_url}>{d.published_url}</a>
-          {d.published_at && <>（{d.published_at.slice(0, 10)}）</>}
-        </p>
-      ) : <p className="my-1 text-sm">未登记发布链接</p>}
-      {typeof d.meta?.platform === "string"
-        && entryUrls[d.meta.platform.split("·")[0]] && (
-        <p className="my-1 text-sm">
-          <a className="text-primary hover:underline"
-             href={entryUrls[d.meta.platform.split("·")[0]]}
-             target="_blank" rel="noreferrer">
-            打开平台上传页（{d.meta.platform}）
-          </a>
-        </p>
-      )}
-      <div className="mt-2 flex flex-col gap-2">
-        <Input placeholder="https://… 发布链接" value={pubUrl}
-               onChange={(e) => setPubUrl(e.target.value)} />
-        <div className="flex items-center gap-2">
-          <Button onClick={() => void run(async () => {
-            if (!pubUrl) return;
-            await publishInfo(d.id, pubUrl);
-            setDetail(await getAsset(d.id)); void refresh();
-          })}>登记</Button>
-          {d.published_url && (
-            <Button variant="outline" onClick={() => void run(async () => {
-              await clearPublishInfo(d.id);
-              setPubUrl(""); setDetail(await getAsset(d.id)); void refresh();
-            })}>清除</Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  // —— 渲染封面/文本变体/语音包/发布登记/产出初始文稿表单（M6 Task 3）：——
+  // 表单整体搬入对应 Dialog（见下方 JSX），字段与提交逻辑逐字沿用；
+  // 仅两处差异：① 提交成功后关闭 Dialog（详情就地刷新，无需留驻）；
+  // ② 打开时重置表单 state（open* 函数）。
+  // 派生发布物与补链为低频操作，按 Dialog 分层决策保留在「更多操作」内联。
 
   // 任务区：按 primaryTask 渲染唯一展开的主任务
+  // （M6 Task 3：带表单的任务改为 TaskLauncher 一句话说明 + 打开 Dialog；
+  //   单击类任务（定稿/阶段推进）保留原内联按钮，提交逻辑逐字不变。）
   const renderTask = (key: string | null) => {
     const d = detail;
     if (!d || !key) return null;
@@ -568,16 +456,47 @@ function Assets({ stageZone }: { stageZone: Zone }) {
           </div>
         );
       case "master_text_finalized":
-        return d.text_content ? renderTextVariantForm(d) : null;
+        return d.text_content ? (
+          <TaskLauncher
+            description="选择提示词，生成本篇的口播稿/公众号版/GEO 变体"
+            buttonText="打开「文本变体」"
+            onOpen={openDtDialog}
+          />
+        ) : null;
       case "master_image_finalized":
-        return renderCoverForm(d, false);
+        return (
+          <TaskLauncher
+            description="选择封面模板与平台（如 抖音·竖版），渲染本篇封面"
+            buttonText="打开「渲染封面」"
+            onOpen={openRcDialog}
+          />
+        );
       case "master_image_drafting":
-        return renderCoverForm(d, true); // 未定稿先提示
+        return ( // 未定稿：Dialog 内先提示
+          <TaskLauncher
+            description="选择封面模板与平台渲染封面（Dialog 内会提示先定稿）"
+            buttonText="打开「渲染封面」"
+            onOpen={openRcDialog}
+          />
+        );
       case "publish_markdown":
-        return d.text_content ? renderVideoKitForm(d) : null;
+        return d.text_content ? (
+          <TaskLauncher
+            description="生成音频 + SRT 字幕 + 素材清单三件套语音包"
+            buttonText="打开「生成视频语音包」"
+            onOpen={openVkDialog}
+          />
+        ) : null;
       case "publish_publishing":
-        return renderPublishRegForm(d);
+        return (
+          <TaskLauncher
+            description="发布完成后填入平台链接完成登记"
+            buttonText="打开「发布登记」"
+            onOpen={openPubDialog}
+          />
+        );
       case "video_kit":
+        // 下载 CTA 移至详情头部 actions（M6 Task 3）；此处保留语音包元信息
         return (
           <div>
             <h3 className="text-sm font-semibold">视频语音包</h3>
@@ -586,12 +505,9 @@ function Assets({ stageZone }: { stageZone: Zone }) {
               {typeof d.meta.sentences === "number"
                 && <> · 分句 {d.meta.sentences} 句</>}
             </p>
-            {d.file_url && (
-              <a href={d.file_url} download
-                 className={cn(buttonVariants({ size: "lg" }), "mt-1")}>
-                下载语音包（zip：音频 + SRT 字幕 + 素材清单）
-              </a>
-            )}
+            <p className="text-sm text-muted-foreground">
+              下载入口在详情头部（zip：音频 + SRT 字幕 + 素材清单）
+            </p>
           </div>
         );
       case "topic_stage": {
@@ -611,7 +527,15 @@ function Assets({ stageZone }: { stageZone: Zone }) {
             </div>
           );
         }
-        if (d.status === "approved") return renderInitialDraftForm(d);
+        if (d.status === "approved") {
+          return (
+            <TaskLauncher
+              description="上传 md/docx 文稿，落成素材库文件并记录与本选题的血缘"
+              buttonText="打开「产出初始文稿」"
+              onOpen={openIdDialog}
+            />
+          );
+        }
         if (d.status === "shelved") {
           return (
             <div>
@@ -705,49 +629,89 @@ function Assets({ stageZone }: { stageZone: Zone }) {
         </Dialog>
       )}
 
+      {/* 资产详情（M6 Task 3）：DetailPageLayout 原型——详情回归浏览态，
+          带表单的任务经 Dialog 承载；onBack 关闭详情回到列表浏览态 */}
       {detail && (
-        <section ref={detailRef} className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{detail.title}</CardTitle>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="outline">{ZONE_LABELS[detail.zone]}</Badge>
-                <StatusBadge tone={STATUS_TONES[detail.status]}>{STATUS_LABELS[detail.status]}</StatusBadge>
-                <span>{detail.content_type}</span>
-                {detail.source_url && <a className="text-primary hover:underline" href={detail.source_url}>源链接</a>}
-                {detail.file_url && <a className="text-primary hover:underline" href={detail.file_url}>文件</a>}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* nextStepHint：保留彩色提示条（效率优先，不引 Alert 组件） */}
-              <div className="mb-2 rounded-md border border-stat-3-soft bg-stat-3-soft px-2.5 py-1.5 text-sm text-stat-3">
-                <strong>下一步：</strong>{nextStepHint(detail)}
-              </div>
+        <>
+          <section ref={detailRef} className="mt-4">
+            <DetailPageLayout
+              breadcrumbItems={[stagePage.title, detail.title]}
+              title={detail.title}
+              subtitle={`${ZONE_LABELS[detail.zone]}·${detail.content_type}`}
+              statusBadge={{ text: STATUS_LABELS[detail.status], tone: STATUS_TONES[detail.status] }}
+              onBack={() => setDetail(null)}
+              headerRightContent={task === "video_kit" && detail.file_url ? (
+                // video_kit 下载 CTA：主任务为语音包时置于头部 actions（primary 样式）
+                <a href={detail.file_url} download
+                   className={cn(buttonVariants())}>
+                  下载语音包（zip：音频 + SRT 字幕 + 素材清单）
+                </a>
+              ) : undefined}
+            >
+              {/* 基本信息 */}
+              <DetailSection title="基本信息" columns={3}>
+                <InfoField label="区域" value={ZONE_LABELS[detail.zone]} />
+                <InfoField label="状态" type="badge" value={STATUS_LABELS[detail.status]}
+                           statusTone={STATUS_TONES[detail.status]} />
+                <InfoField label="类型" value={detail.content_type} />
+                <InfoField label="创建人" value={detail.created_by} />
+                <InfoField label="创建时间" type="datetime" value={detail.created_at} />
+                <InfoField label="更新时间" type="datetime" value={detail.updated_at} />
+                {detail.source_url && (
+                  <InfoField label="来源链接" type="custom" className="min-w-0"
+                             value={<a className="text-primary hover:underline break-all"
+                                       href={detail.source_url}>{detail.source_url}</a>} />
+                )}
+                {detail.file_url && (
+                  <InfoField label="文件" type="custom"
+                             value={<a className="text-primary hover:underline"
+                                       href={detail.file_url}>下载文件</a>} />
+                )}
+                {detail.published_url && (
+                  <InfoField label="发布链接" type="custom" className="min-w-0"
+                             value={<a className="text-primary hover:underline break-all"
+                                       href={detail.published_url}>{detail.published_url}</a>} />
+                )}
+              </DetailSection>
 
-              {/* 任务区：主任务唯一默认展开；无主任务/无可渲染表单则不显示 */}
-              {task && taskNode && (
-                <div className="mb-3 rounded-md border bg-muted/50 p-3">
-                  <div className="mb-1.5 text-xs text-muted-foreground">当前任务</div>
-                  {taskNode}
+              {/* 当前任务：nextStepHint + 主任务（表单类任务 = TaskLauncher 打开 Dialog） */}
+              <DetailSection title="当前任务" columns={2}>
+                <div className="md:col-span-2 flex flex-col gap-2">
+                  {/* nextStepHint：保留彩色提示条（效率优先，不引 Alert 组件） */}
+                  <div className="rounded-md border border-stat-3-soft bg-stat-3-soft px-2.5 py-1.5 text-sm text-stat-3">
+                    <strong>下一步：</strong>{nextStepHint(detail)}
+                  </div>
+                  {/* 主任务唯一默认展开；无主任务/无可渲染表单则不显示 */}
+                  {task && taskNode && (
+                    <div className="rounded-md border bg-muted/50 p-3">
+                      {taskNode}
+                    </div>
+                  )}
                 </div>
-              )}
+              </DetailSection>
 
+              {/* 正文（markdown/docx 有文本时展示） */}
               {(detail.content_type === "markdown" || detail.content_type === "docx") && detail.text_content && (
-                <div className="mt-2">
-                  <h3 className="text-sm font-semibold">生成正文</h3>
-                  <pre className="mt-1 max-h-[300px] overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">
-                    {detail.text_content}
-                  </pre>
-                </div>
+                <DetailSection title="正文" columns={2}>
+                  <div className="md:col-span-2">
+                    <pre className="max-h-[300px] overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">
+                      {detail.text_content}
+                    </pre>
+                  </div>
+                </DetailSection>
               )}
 
-              <div className="mt-2">
-                <h3 className="text-sm font-semibold">血缘</h3>
-                <p className="text-sm">上游：{detail.upstream.map((d) => d.source_asset_id).join("、") || "无"}</p>
-                <p className="text-sm">下游：{detail.downstream.map((d) => d.derived_asset_id).join("、") || "无"}</p>
-              </div>
+              {/* 血缘（补链在「更多操作」） */}
+              <DetailSection title="血缘" columns={2}>
+                <InfoField label="上游"
+                           value={detail.upstream.map((d) => d.source_asset_id).join("、") || "无"} />
+                <InfoField label="下游"
+                           value={detail.downstream.map((d) => d.derived_asset_id).join("、") || "无"} />
+              </DetailSection>
 
-              <details className="mt-2">
+              {/* 更多操作：低频/危险操作收口（手动流转/派生发布物/补链/删除 +
+                  非主任务期的 Dialog 入口） */}
+              <details>
                 <summary className="cursor-pointer font-medium">
                   更多操作（手动状态流转 / 派生发布物 / 补链 / 删除）
                 </summary>
@@ -766,27 +730,39 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                     <div className="mt-2">{renderDeriveForm(detail)}</div>
                   )}
 
-                  {/* 图片母版已进入发布流程时，渲染封面不再是主任务，保留在此 */}
+                  {/* 图片母版已进入发布流程时，渲染封面不再是主任务，入口保留在此（打开 Dialog） */}
                   {detail.zone === "master" && detail.content_type === "image"
                     && task !== "master_image_finalized" && task !== "master_image_drafting" && (
-                    <div className="mt-2">{renderCoverForm(detail, false)}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">渲染封面：</span>
+                      <Button size="sm" variant="outline" onClick={openRcDialog}>打开</Button>
+                    </div>
                   )}
 
-                  {/* 文本母版已进入发布流程时，文本变体保留在此 */}
+                  {/* 文本母版已进入发布流程时，文本变体入口保留在此（打开 Dialog） */}
                   {detail.zone === "master" && detail.text_content
                     && (detail.status === "publishing" || detail.status === "published") && (
-                    <div className="mt-2">{renderTextVariantForm(detail)}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">文本变体：</span>
+                      <Button size="sm" variant="outline" onClick={openDtDialog}>打开</Button>
+                    </div>
                   )}
 
-                  {/* 非「发布中」主任务的发布资产，登记/清除入口保留在此 */}
+                  {/* 非「发布中」主任务的发布资产，登记/清除入口保留在此（打开 Dialog） */}
                   {detail.zone === "publish" && task !== "publish_publishing" && (
-                    <div className="mt-2">{renderPublishRegForm(detail)}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">发布登记：</span>
+                      <Button size="sm" variant="outline" onClick={openPubDialog}>打开</Button>
+                    </div>
                   )}
 
-                  {/* 已发布的文本发布物，语音包生成入口保留在此 */}
+                  {/* 已发布的文本发布物，语音包生成入口保留在此（打开 Dialog） */}
                   {detail.zone === "publish" && detail.content_type === "markdown"
                     && detail.text_content && task !== "publish_markdown" && (
-                    <div className="mt-2">{renderVideoKitForm(detail)}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">生成视频语音包：</span>
+                      <Button size="sm" variant="outline" onClick={openVkDialog}>打开</Button>
+                    </div>
                   )}
 
                   <div className="mt-2">
@@ -810,9 +786,209 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                   </div>
                 </div>
               </details>
-            </CardContent>
-          </Card>
-        </section>
+            </DetailPageLayout>
+          </section>
+
+          {/* 渲染封面 Dialog：字段与提交逻辑逐字沿用原 renderCoverForm */}
+          <Dialog open={rcOpen} onOpenChange={setRcOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>渲染封面</DialogTitle>
+                <DialogDescription>按平台渲染封面图，产出图片发布物并入本母版血缘。</DialogDescription>
+              </DialogHeader>
+              {/* 未定稿提示（原 showDraftNote：仅创作中状态出现） */}
+              {(detail.status === "topic" || detail.status === "drafting") && (
+                <p className="my-1 text-sm text-warning">建议先定稿，再按平台出图。</p>
+              )}
+              {platformMeta === null ? (
+                <span className="text-sm text-muted-foreground">
+                  平台列表不可用（meta 接口未响应）
+                </span>
+              ) : (
+                <Select value={rcPlatform} onValueChange={(v) => setRcPlatform(v as string)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {coverPlatforms.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="mt-2 flex flex-col gap-2">
+                {/* items：让 SelectValue（触发器）按 label 显示，而非原始 value（UUID/空串） */}
+                <Select value={rcRecipeId} onValueChange={(v) => setRcRecipeId(v as string)}
+                        items={[{ value: "", label: "选择封面模板…" },
+                                ...coverRecipes.map((r) => ({ value: r.id, label: r.name }))]}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">选择封面模板…</SelectItem>
+                    {coverRecipes.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input placeholder="标题" value={rcTitle}
+                       onChange={(e) => setRcTitle(e.target.value)} />
+                <Input placeholder="副标题（可选）" value={rcSubtitle}
+                       onChange={(e) => setRcSubtitle(e.target.value)} />
+                <Input placeholder='规格覆盖 JSON（可选，如 {"width":900}）' value={rcSpec}
+                       onChange={(e) => setRcSpec(e.target.value)} />
+                <Button onClick={() => void run(async () => {
+                  if (!rcRecipeId || !rcTitle) return;
+                  let spec: Record<string, unknown> | undefined;
+                  if (rcSpec.trim()) spec = JSON.parse(rcSpec);
+                  await renderCover(detail.id, rcRecipeId, rcPlatform, rcTitle,
+                    rcSubtitle || undefined, spec);
+                  setRcTitle(""); setRcSubtitle(""); setRcSpec("");
+                  setDetail(await getAsset(detail.id)); void refresh();
+                  setRcOpen(false); // 提交成功关闭：详情已就地刷新
+                })}>渲染</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* 文本变体 Dialog：字段与提交逻辑逐字沿用原 renderTextVariantForm */}
+          <Dialog open={dtOpen} onOpenChange={setDtOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>文本变体</DialogTitle>
+                <DialogDescription>按提示词生成本篇的口播稿/公众号版/GEO 变体。</DialogDescription>
+              </DialogHeader>
+              <div className="mt-2 flex flex-col gap-2">
+                {/* items：触发器显示模板名（含类型），而非原始 value（UUID/空串） */}
+                <Select value={dtRecipeId} onValueChange={(v) => setDtRecipeId(v as string)}
+                        items={[{ value: "", label: "选择提示词…" },
+                                ...textRecipes.map((r) => ({
+                                  value: r.id,
+                                  label: `${r.name}（${RECIPE_KIND_LABELS[r.kind]}）`,
+                                }))]}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">选择提示词…</SelectItem>
+                    {textRecipes.map((r) =>
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}（{RECIPE_KIND_LABELS[r.kind]}）
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input placeholder="变体标题" value={dtTitle}
+                       onChange={(e) => setDtTitle(e.target.value)} />
+                <Textarea placeholder="附加指令（可选）" value={dtInstructions}
+                          onChange={(e) => setDtInstructions(e.target.value)} rows={2} />
+                <Button onClick={() => void run(async () => {
+                  if (!dtRecipeId || !dtTitle) return;
+                  await deriveText(detail.id, dtRecipeId, dtTitle, dtInstructions || undefined);
+                  setDtTitle(""); setDtInstructions("");
+                  setDetail(await getAsset(detail.id)); void refresh();
+                  setDtOpen(false);
+                })}>生成变体</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* 生成视频语音包 Dialog：字段与提交逻辑逐字沿用原 renderVideoKitForm */}
+          <Dialog open={vkOpen} onOpenChange={setVkOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>生成视频语音包</DialogTitle>
+                <DialogDescription>生成音频 + SRT 字幕 + 素材清单三件套。</DialogDescription>
+              </DialogHeader>
+              <div className="mt-2 flex flex-col gap-2">
+                {/* items：音色展示名即 value（labels==values），显式声明保证触发器稳定解析 */}
+                <Select value={vkVoice} onValueChange={(v) => setVkVoice(v as string)}
+                        items={voiceOptions.map((v) => ({ value: v, label: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {voiceOptions.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input placeholder="语音包标题（可选）" value={vkTitle}
+                       onChange={(e) => setVkTitle(e.target.value)} />
+                <Button onClick={() => void run(async () => {
+                  await deriveVideoKit(detail.id, vkVoice, vkTitle || undefined);
+                  setVkTitle("");
+                  setDetail(await getAsset(detail.id)); void refresh();
+                  setVkOpen(false);
+                })}>生成语音包</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* 发布登记 Dialog：字段与提交逻辑逐字沿用原 renderPublishRegForm */}
+          <Dialog open={pubOpen} onOpenChange={setPubOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>发布登记</DialogTitle>
+                <DialogDescription>正式发布后回填平台链接；登记后可点「已发布」收口。</DialogDescription>
+              </DialogHeader>
+              {detail.published_url ? (
+                <p className="my-1 text-sm">
+                  已登记：<a className="text-primary hover:underline" href={detail.published_url}>{detail.published_url}</a>
+                  {detail.published_at && <>（{detail.published_at.slice(0, 10)}）</>}
+                </p>
+              ) : <p className="my-1 text-sm">未登记发布链接</p>}
+              {typeof detail.meta?.platform === "string"
+                && entryUrls[detail.meta.platform.split("·")[0]] && (
+                <p className="my-1 text-sm">
+                  <a className="text-primary hover:underline"
+                     href={entryUrls[detail.meta.platform.split("·")[0]]}
+                     target="_blank" rel="noreferrer">
+                    打开平台上传页（{detail.meta.platform}）
+                  </a>
+                </p>
+              )}
+              <div className="mt-2 flex flex-col gap-2">
+                <Input placeholder="https://… 发布链接" value={pubUrl}
+                       onChange={(e) => setPubUrl(e.target.value)} />
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => void run(async () => {
+                    if (!pubUrl) return;
+                    await publishInfo(detail.id, pubUrl);
+                    setDetail(await getAsset(detail.id)); void refresh();
+                    setPubOpen(false);
+                  })}>登记</Button>
+                  {detail.published_url && (
+                    <Button variant="outline" onClick={() => void run(async () => {
+                      await clearPublishInfo(detail.id);
+                      setPubUrl(""); setDetail(await getAsset(detail.id)); void refresh();
+                      setPubOpen(false);
+                    })}>清除</Button>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* 产出初始文稿 Dialog：字段与提交逻辑逐字沿用原 renderInitialDraftForm
+              （已立项选题 → 源料区 available 文稿，后端记 topic→source 血缘） */}
+          <Dialog open={idOpen} onOpenChange={setIdOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>产出初始文稿</DialogTitle>
+                <DialogDescription>文稿将入素材库并记录与本选题的血缘。</DialogDescription>
+              </DialogHeader>
+              <div className="mt-2 flex flex-col gap-2">
+                <Input placeholder="文稿标题" value={idTitle}
+                       onChange={(e) => setIdTitle(e.target.value)} />
+                <Label>
+                  文件（md / docx）
+                  <Input type="file" accept=".md,.docx"
+                         onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
+                </Label>
+                <Button
+                  disabled={!idFile || !idTitle}
+                  title={!idFile || !idTitle ? "请先填写标题并选择 md/docx 文件" : undefined}
+                  onClick={() => void run(async () => {
+                    if (!idFile) return; // 按钮已 disabled，此处仅为类型收窄
+                    await initialDraft(detail.id, idTitle, idFile);
+                    setIdTitle(""); setIdFile(null);
+                    setDetail(await getAsset(detail.id)); void refresh();
+                    setIdOpen(false);
+                  })}
+                >产出文稿</Button>
+                <p className="mt-0 text-sm text-muted-foreground">
+                  文稿将入素材库并记录与本选题的血缘
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   );

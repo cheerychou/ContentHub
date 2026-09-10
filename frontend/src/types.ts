@@ -44,6 +44,7 @@ export interface Asset {
   source_url: string | null;
   created_by: string;
   meta: Record<string, unknown>;
+  created_at: string; // 后端 AssetOut 一直返回该字段，M6 详情「基本信息」开始展示
   updated_at: string;
 }
 
