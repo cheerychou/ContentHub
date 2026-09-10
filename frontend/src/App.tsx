@@ -20,11 +20,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { StandardListPage } from "@/components/common/standard-list-page";
+import { type Column } from "@/components/common/data-table";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { AppSidebar, type AppMenuItem } from "@/components/layout/app-sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { AppFooter } from "@/components/ui/app-footer";
@@ -39,6 +40,15 @@ const STAGES: { zone: Zone; hash: string; icon: string; label: string }[] = [
   { zone: "master", hash: "#/master", icon: "🎬", label: "内容制作" },
   { zone: "publish", hash: "#/publish", icon: "📤", label: "内容发布" },
 ];
+
+// 各阶段页文案（M6 Task 2）：StandardListPage 标题/一句话描述/主 action
+// （publish 无上传 action——发布物靠派生，不提供手工新建入口）
+const STAGE_PAGES: Record<Zone, { title: string; description: string; action?: string }> = {
+  source: { title: "素材库", description: "原始素材与底片：内容生产的原料", action: "上传素材" },
+  topic: { title: "选题策划", description: "候选、调研与立项：把想法变成可执行的题目", action: "新建选题" },
+  master: { title: "内容制作", description: "母版创作与定稿：成品的单一可信来源", action: "上传母版" },
+  publish: { title: "内容发布", description: "多平台发布登记与收口：内容到达读者的最后一公里" },
+};
 
 // 应用骨架导航（M6）：驾驶舱 + 四阶段 + 提示词与模板；countOf 从 /api/meta/stats 取徽标计数
 const NAV: {
@@ -241,6 +251,12 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const [upTitle, setUpTitle] = useState("");
   const [upFile, setUpFile] = useState<File | null>(null);
   const [upResult, setUpResult] = useState("");
+  // 上传 Dialog 开合（M6 Task 2：表单搬入 Dialog；打开即重置，避免上次输入/结果残留）
+  const [upOpen, setUpOpen] = useState(false);
+  const openUploadDialog = () => {
+    setUpTitle(""); setUpFile(null); setUpResult("");
+    setUpOpen(true);
+  };
   // 派生表单
   const [dvTitle, setDvTitle] = useState("");
   const [dvPlatform, setDvPlatform] = useState("微信公众号");
@@ -306,6 +322,27 @@ function Assets({ stageZone }: { stageZone: Zone }) {
 
   const task = detail ? primaryTask(detail) : null;
   const stageInfo = STAGES.find((s) => s.zone === stageZone);
+  const stagePage = STAGE_PAGES[stageZone];
+
+  // 表格列（M6 Task 2）：标题（text-sm font-medium + 文件名/类型辅助行）、状态、更新时间
+  const columns: Column<Asset>[] = [
+    {
+      key: "title", title: "标题",
+      render: (a) => (
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{a.title}</p>
+          <p className="truncate text-xs text-muted-foreground">{a.file_name ?? a.content_type}</p>
+        </div>
+      ),
+    },
+    {
+      key: "status", title: "状态",
+      render: (a) => (
+        <StatusBadge tone={STATUS_TONES[a.status]}>{STATUS_LABELS[a.status]}</StatusBadge>
+      ),
+    },
+    { key: "updated_at", title: "更新时间", render: (a) => a.updated_at.slice(0, 10) },
+  ];
 
   // —— 表单渲染助手：同一表单可能出现在任务区或更多操作，抽成函数避免重复 JSX ——
   // 全部沿用原有提交逻辑与 run 错误处理，仅替换为 ui 组件（Input/Select/Textarea/Button）。
@@ -595,45 +632,44 @@ function Assets({ stageZone }: { stageZone: Zone }) {
 
   return (
     <div className="mx-auto max-w-[1100px]">
-      <PageHeader
-        title="ContentHub · 四阶段工作台"
-        subtitle={`当前阶段：${stageInfo?.label ?? ZONE_LABELS[stageZone]}`}
-        description="内容流水线：① 上传母版/源料 → ② 定稿 → ③ 渲染封面 / 文本变体 → ④ 视频语音包 → ⑤ 发布登记"
-      />
-      <p className="mt-2 text-sm text-muted-foreground">
-        点击列表任意一行打开详情；详情面板按资产状态给出「下一步」指引。常用路径：文章母版 →
-        文本变体出「口播稿」→ 语音包三件套进剪映；图片母版 → 渲染封面出多平台图。
-      </p>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      {/* 阶段页固定 zone：左导航即区域选择器，列表查询强制带 zone */}
-      <section className="mb-3 mt-4 flex gap-2">
-        <Input placeholder="搜索标题/正文…" value={q}
-               onChange={(e) => setQ(e.target.value)} />
-        <Button variant="outline" onClick={() => void refresh()}>搜索</Button>
-      </section>
-
-      {/* 状态快捷筛选 chips：点击即过滤并立即刷新（无需按「搜索」），可与关键词叠加 */}
-      <section className="mb-3 flex items-center gap-2">
-        {statusFilters.map((f) => {
-          const active = status === f.value;
-          return (
-            <Button key={f.value || "all"} size="sm"
-                    variant={active ? "default" : "outline"}
-                    onClick={() => setStatus(f.value)}>
-              {f.label}
-            </Button>
-          );
+      {/* 列表页原型（M6 Task 2）：标题/描述/搜索/主 action + SegmentTabs 状态筛选 + 表格 */}
+      <StandardListPage<Asset>
+        title={stagePage.title}
+        description={stagePage.description}
+        action={stagePage.action
+          ? <Button onClick={openUploadDialog}>{stagePage.action}</Button>
+          : undefined}
+        searchFields={[{ name: "q", label: "关键词", type: "input", placeholder: "搜索标题/正文…" }]}
+        searchValues={{ q }}
+        onSearchChange={(v) => setQ(String(v.q ?? ""))}
+        onSearch={() => void refresh()}
+        onReset={() => setQ("")}
+        statusFilter={{ options: statusFilters, value: status, onChange: setStatus }}
+        data={assets}
+        columns={columns}
+        error={error}
+        onRetry={() => void refresh()}
+        onRowClick={(a) => void run(async () => {
+          const d = await getAsset(a.id);
+          setDetail(d);
+          setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
+          setIdTitle(""); setIdFile(null);  // 同理重置初始文稿表单
         })}
-      </section>
+        getRowKey={(a) => a.id}
+      />
 
-      {/* 上传表单仅素材库/选题策划/内容制作三页显示；上传目标即当前阶段区 */}
+      {/* 上传 Dialog（M6 Task 2）：表单原逻辑搬入；提交成功留在弹窗内展示入库结果 */}
       {stageZone !== "publish" && (
-        <Card className="mb-3">
-          <CardHeader>
-            <CardTitle>上传资产（入库到{stageInfo?.label ?? ZONE_LABELS[stageZone]}）</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Dialog open={upOpen} onOpenChange={setUpOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {stagePage.action}（入库到{stageInfo?.label ?? ZONE_LABELS[stageZone]}）
+              </DialogTitle>
+              <DialogDescription>
+                上传目标即当前阶段区；入库后点击列表任意一行打开详情。
+              </DialogDescription>
+            </DialogHeader>
             <div className="flex flex-col gap-2">
               <Input placeholder="标题" value={upTitle} onChange={(e) => setUpTitle(e.target.value)} />
               <Label>
@@ -659,40 +695,15 @@ function Assets({ stageZone }: { stageZone: Zone }) {
                   <span className="text-sm text-muted-foreground">填写标题并选择文件后可上传</span>
                 )}
               </div>
+              {upResult && (
+                <div className="mt-2 rounded-md border border-stat-3-soft bg-stat-3-soft px-2.5 py-1.5 text-sm text-stat-3">
+                  {upResult}
+                </div>
+              )}
             </div>
-            {upResult && (
-              <div className="mt-2 rounded-md border border-stat-3-soft bg-stat-3-soft px-2.5 py-1.5 text-sm text-stat-3">
-                {upResult}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       )}
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>标题</TableHead><TableHead>区域</TableHead>
-            <TableHead>状态</TableHead><TableHead>更新时间</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {assets.map((a) => (
-            <TableRow key={a.id} className="cursor-pointer" onClick={() => void run(async () => {
-              const d = await getAsset(a.id);
-              setDetail(d);
-              setPubUrl(d.published_url ?? ""); // 换资产打开详情时重置发布链接输入，避免上一条资产的 URL 泄漏
-              setIdTitle(""); setIdFile(null);  // 同理重置初始文稿表单
-            })}>
-              <TableCell>{a.title}</TableCell>
-              <TableCell><Badge variant="outline">{ZONE_LABELS[a.zone]}</Badge></TableCell>
-              <TableCell><StatusBadge tone={STATUS_TONES[a.status]}>{STATUS_LABELS[a.status]}</StatusBadge></TableCell>
-              <TableCell>{a.updated_at.slice(0, 10)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {assets.length === 0 && <EmptyState variant="list" size="sm" />}
 
       {detail && (
         <section ref={detailRef} className="mt-4">
