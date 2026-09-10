@@ -121,6 +121,8 @@ import {
   ChatCircle,
   FolderOpen,
   Circle,
+  PencilLine,
+  VideoCamera,
 
   // ===== 图表/数据类 =====
   ChartBar,
@@ -247,6 +249,8 @@ export const Icons = {
   Chat: ChatCircle,
   FolderOpen,
   Circle,
+  Compose: PencilLine,
+  Video: VideoCamera,
 
   // ---- 图表 ----
   Chart: ChartBar,

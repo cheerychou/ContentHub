@@ -46,7 +46,7 @@ export default function Recipes() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-[1100px] p-4">
+    <div className="mx-auto max-w-[1100px]">
       <PageHeader title="ContentHub · 提示词与模板" />
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -127,6 +127,6 @@ export default function Recipes() {
         </TableBody>
       </Table>
       {recipes.length === 0 && <EmptyState variant="list" size="sm" />}
-    </main>
+    </div>
   );
 }

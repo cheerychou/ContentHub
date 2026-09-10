@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import {
   clearPublishInfo, deleteAsset, derive, deriveText, deriveVideoKit, getAsset,
-  fetchPlatformMeta, initialDraft, linkDerivation, listAssets, listRecipes,
-  patchStatus, publishInfo, renderCover, uploadAsset, type PlatformMeta,
+  fetchMetaStats, fetchPlatformMeta, initialDraft, linkDerivation, listAssets,
+  listRecipes, patchStatus, publishInfo, renderCover, uploadAsset,
+  type MetaStats, type PlatformMeta,
 } from "./api";
 import {
   RECIPE_KIND_LABELS, STATUS_LABELS, ZONE_LABELS, ZONE_STATUSES,
@@ -24,6 +25,11 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { AppSidebar, type AppMenuItem } from "@/components/layout/app-sidebar";
+import { TopBar } from "@/components/layout/topbar";
+import { AppFooter } from "@/components/ui/app-footer";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { Icons } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 // 四阶段工作台（M4）：导航即区域选择器；STAGES 同时驱动左导航与路由解析
@@ -32,6 +38,20 @@ const STAGES: { zone: Zone; hash: string; icon: string; label: string }[] = [
   { zone: "topic", hash: "#/topic", icon: "📝", label: "选题策划" },
   { zone: "master", hash: "#/master", icon: "🎬", label: "内容制作" },
   { zone: "publish", hash: "#/publish", icon: "📤", label: "内容发布" },
+];
+
+// 应用骨架导航（M6）：驾驶舱 + 四阶段 + 提示词与模板；countOf 从 /api/meta/stats 取徽标计数
+const NAV: {
+  key: string; label: string;
+  icon: ComponentType<{ size?: number | string; className?: string }>;
+  countOf?: (s: MetaStats) => number;
+}[] = [
+  { key: "#/dashboard", label: "驾驶舱", icon: Icons.ChartLine },
+  { key: "#/source", label: "素材库", icon: Icons.Grid, countOf: (s) => s.zones.source?.total ?? 0 },
+  { key: "#/topic", label: "选题策划", icon: Icons.Idea, countOf: (s) => s.zones.topic?.total ?? 0 },
+  { key: "#/master", label: "内容制作", icon: Icons.Video, countOf: (s) => s.zones.master?.total ?? 0 },
+  { key: "#/publish", label: "内容发布", icon: Icons.Send, countOf: (s) => s.zones.publish?.total ?? 0 },
+  { key: "#/recipes", label: "提示词与模板", icon: Icons.Compose, countOf: (s) => s.recipes },
 ];
 
 // 状态驱动的「下一步」指引（流程导向，降低学习成本）
@@ -121,49 +141,80 @@ function useHashRoute(): string {
   return route;
 }
 
-// 单条左导航项：激活态用 Button variant 区分（hash 导航行为不变，效率优先不引 sidebar 全家桶）
-function NavItem(props: { href: string; label: string; active: boolean }) {
+// 驾驶舱占位页（真实看板在 M6 任务 4 实现）
+function DashboardPlaceholder() {
   return (
-    <a href={props.href}
-       className={cn(buttonVariants({
-         variant: props.active ? "default" : "ghost",
-       }), "w-full justify-start", !props.active && "font-normal")}>
-      {props.label}
-    </a>
-  );
-}
-
-function Nav({ route }: { route: string }) {
-  return (
-    <nav className="flex w-[150px] shrink-0 flex-col gap-1 border-r p-3">
-      {STAGES.map((s) => (
-        <NavItem key={s.hash} href={s.hash} label={`${s.icon} ${s.label}`}
-                 active={route.startsWith(s.hash)} />
-      ))}
-      <NavItem href="#/recipes" label="⚙️ 提示词与模板" active={route.startsWith("#/recipes")} />
-    </nav>
+    <div className="mx-auto max-w-[1100px]">
+      <PageHeader
+        title="驾驶舱"
+        description="内容供应链全流程数据看板 · 建设中（本迭代后续任务交付）"
+      />
+      <Card className="mt-4">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          资产总量、各区分布与产出趋势图表将在此呈现——数据接口
+          GET /api/meta/stats 已就绪。
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
 export default function App() {
   const route = useHashRoute();
-  // #/ 重定向到 #/source（默认进入素材库）
+  // #/ 重定向到 #/dashboard（默认进入驾驶舱，按 M6 信息架构）
   useEffect(() => {
-    if (route === "" || route === "#" || route === "#/") location.replace("#/source");
+    if (route === "" || route === "#" || route === "#/") location.replace("#/dashboard");
   }, [route]);
+
+  // 折叠 state 顶层持有（SidebarProvider 受控），localStorage 记忆用户偏好
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem("ch-sidebar") === "collapsed"
+  );
+  useEffect(() => {
+    localStorage.setItem("ch-sidebar", collapsed ? "collapsed" : "expanded");
+  }, [collapsed]);
+
+  // 统计徽标：挂载拉取一次；失败静默（徽标不显示，不阻塞导航）
+  const [stats, setStats] = useState<MetaStats | null>(null);
+  useEffect(() => {
+    void fetchMetaStats().then(setStats).catch(() => setStats(null));
+  }, []);
 
   const stage = STAGES.find((s) => route.startsWith(s.hash));
   const stageZone: Zone = stage?.zone ?? "source";
 
+  const activeKey = NAV.find((n) => route.startsWith(n.key))?.key ?? "";
+  const navItems: AppMenuItem[] = NAV.map((n) => ({
+    key: n.key,
+    label: n.label,
+    icon: n.icon,
+    count: stats && n.countOf ? n.countOf(stats) : undefined,
+  }));
+  const pageTitle = NAV.find((n) => n.key === activeKey)?.label;
+
   return (
-    <div className="flex min-h-screen">
-      <Nav route={route} />
-      <div className="min-w-0 flex-1">
-        {route.startsWith("#/recipes")
-          ? <Recipes />
-          : <Assets key={stageZone} stageZone={stageZone} />}
+    <SidebarProvider open={!collapsed} onOpenChange={(open) => setCollapsed(!open)}>
+      <div className="flex h-svh w-full overflow-hidden">
+        <AppSidebar
+          items={navItems}
+          activeId={activeKey}
+          onSelect={(key) => { if (key !== route) location.hash = key; }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopBar title={pageTitle} />
+          <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+            {route.startsWith("#/dashboard") ? (
+              <DashboardPlaceholder />
+            ) : route.startsWith("#/recipes") ? (
+              <Recipes />
+            ) : (
+              <Assets key={stageZone} stageZone={stageZone} />
+            )}
+          </main>
+          <AppFooter>ContentHub · 内容供应链工作台</AppFooter>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
 
@@ -543,7 +594,7 @@ function Assets({ stageZone }: { stageZone: Zone }) {
   const taskNode = renderTask(task);
 
   return (
-    <main className="mx-auto max-w-[1100px] p-4">
+    <div className="mx-auto max-w-[1100px]">
       <PageHeader
         title="ContentHub · 四阶段工作台"
         subtitle={`当前阶段：${stageInfo?.label ?? ZONE_LABELS[stageZone]}`}
@@ -752,6 +803,6 @@ function Assets({ stageZone }: { stageZone: Zone }) {
           </Card>
         </section>
       )}
-    </main>
+    </div>
   );
 }

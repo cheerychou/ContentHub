@@ -208,3 +208,23 @@ export async function deriveVideoKit(
   if (!resp.ok) throw new Error(await errDetail(resp));
   return resp.json();
 }
+
+// 健康探测（上栏健康点，仅挂载时调用一次）
+export async function fetchHealth(): Promise<{ status: string; version: string }> {
+  const resp = await fetch(`/api/health`);
+  if (!resp.ok) throw new Error(`健康检查失败 ${resp.status}`);
+  return resp.json();
+}
+
+// 资产统计（侧边栏徽标 / 驾驶舱数据源）：zones 含全部四区，区字典仅含计数 > 0 的状态
+export interface MetaStats {
+  total: number;
+  zones: Record<string, { total: number } & Record<string, number>>;
+  recipes: number;
+}
+
+export async function fetchMetaStats(): Promise<MetaStats> {
+  const resp = await fetch(`${base}/meta/stats`);
+  if (!resp.ok) throw new Error(`统计获取失败 ${resp.status}`);
+  return resp.json();
+}
