@@ -37,7 +37,9 @@ def test_derive_from_master_creates_publish_and_lineage(client):
     body = resp.json()
     assert body["zone"] == "publish"
     assert body["status"] == "publishing"
-    assert body["meta"] == {"platform": "微信公众号"}
+    # M7：attrs 与既有 meta（platform）合并保留
+    assert body["meta"]["platform"] == "微信公众号"
+    assert body["meta"]["attrs"] == {"word_count": 2, "language": "zh"}
     assert body["upstream"][0]["source_asset_id"] == master["id"]
 
 

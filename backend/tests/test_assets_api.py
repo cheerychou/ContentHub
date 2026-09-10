@@ -1,9 +1,20 @@
+import base64
+import json
+import subprocess
+
 import pytest
 from fastapi.testclient import TestClient
 
+import app.routers.assets as assets_mod
 from app.db import get_db
 from app.main import app
 from app.storage import FakeStorage, get_storage
+
+# 1×1 红点 PNG（真字节，同 M2 冒烟 / test_media_attrs）
+PNG_1X1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1Pe"
+    "AAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+)
 
 
 @pytest.fixture()
@@ -162,3 +173,81 @@ def test_upload_broken_docx_422_and_no_object(client, fake):
     assert resp.status_code == 422
     assert "docx 解析失败" in resp.json()["detail"]
     assert fake.objects == {}
+
+
+# ---------- M7 素材属性抽取接入 ----------
+
+def test_upload_image_extracts_attrs(client):
+    """上传图片 → 201，meta.attrs 含格式与宽高。"""
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "封面图"},
+        files={"file": ("cover.png", PNG_1X1, "image/png")},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["meta"]["attrs"] == {
+        "format": "PNG", "width": 1, "height": 1}
+
+
+def test_upload_md_extracts_word_count(client):
+    """上传 markdown → meta.attrs 字数与语言。"""
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "文稿"},
+        files=_md_file("文稿.md", "# 标题\n\n途虎养车供应链视角。"),
+    )
+    assert resp.status_code == 201
+    attrs = resp.json()["meta"]["attrs"]
+    assert attrs["word_count"] > 0
+    assert attrs["language"] == "zh"
+
+
+def test_upload_broken_image_no_attrs_still_201(client):
+    """失败隔离：垃圾图片字节 → 201 且 meta 无 attrs，上传不失败。"""
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "坏图"},
+        files={"file": ("broken.png", b"definitely not png", "image/png")},
+    )
+    assert resp.status_code == 201
+    assert "attrs" not in resp.json()["meta"]
+
+
+def test_upload_large_video_spool_path_extracts_attrs(client, monkeypatch):
+    """大文件（spool）路径：视频另落临时文件喂 ffprobe（canned JSON），写入 attrs。"""
+    monkeypatch.setattr(assets_mod, "INLINE_TEXT_LIMIT", 8)  # 强制走 spool 大文件路径
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            cmd, 0, stdout=json.dumps({
+                "streams": [{"codec_type": "video", "codec_name": "h264",
+                             "width": 1920, "height": 1080}],
+                "format": {"duration": "12.5"},
+            }), stderr="")
+
+    monkeypatch.setattr(assets_mod.media_attrs.subprocess, "run", fake_run)
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "大视频"},
+        files={"file": ("demo.mp4", b"\x00" * 16, "video/mp4")},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["meta"]["attrs"] == {
+        "format": "h264", "width": 1920, "height": 1080, "duration": 12.5}
+
+
+def test_upload_small_video_memory_path_extracts_attrs(client, monkeypatch):
+    """小视频（<50MB 常见）走内存路径也要抽 attrs（真实冒烟回归：曾漏分派）。"""
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            cmd, 0, stdout=json.dumps({
+                "streams": [{"codec_type": "video", "codec_name": "h264",
+                             "width": 320, "height": 240}],
+                "format": {"duration": "1.0"},
+            }), stderr="")
+
+    monkeypatch.setattr(assets_mod.media_attrs.subprocess, "run", fake_run)
+    resp = client.post(
+        "/api/assets", data={"zone": "master", "title": "小视频"},
+        files={"file": ("demo.mp4", b"\x00" * 16, "video/mp4")},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["meta"]["attrs"] == {
+        "format": "h264", "width": 320, "height": 240, "duration": 1.0}

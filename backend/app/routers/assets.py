@@ -26,6 +26,7 @@ from ..models import (
 )
 from ..rendering import render_html
 from .. import rendering
+from .. import media_attrs
 from .. import speech
 from .. import subtitles
 from .. import docx_text
@@ -69,11 +70,13 @@ def content_type_for(file_name: str) -> str:
 
 
 async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
-                       content_type: str) -> str | None:
-    """小文件入内存并返回文本（markdown/docx）；大文件 spool 流式；超 2GB 拒绝。
+                       content_type: str) -> tuple[str | None, dict]:
+    """小文件入内存并返回 (文本, 属性)；大文件 spool 流式；超 2GB 拒绝。
 
     UploadFile 已在磁盘 spill：读头部判定大小，小文件进内存并抽文本，
-    大文件 spool 流式上传。返回抽取的文本（markdown/docx），其余返回 None；
+    大文件 spool 流式上传。返回 (text, attrs)：text 仅为 markdown/docx 抽取
+    的正文（其余 None）；attrs 为素材类型属性（图片尺寸/文本字数与语言/
+    音视频时长尺寸），抽取失败为 {}——失败隔离，绝不影响上传结果（M7）。
     超 2GB 抛 413（调用方须 rollback 后 re-raise）。
 
     小文件路径先抽取后落盘：docx 解析失败抛 422 时存储中不残留孤儿对象。
@@ -90,7 +93,16 @@ async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
                 raise HTTPException(
                     422, "docx 解析失败：文件可能已损坏或非有效 Word 文档") from exc
         storage.put(zone, key, data, file.content_type or "application/octet-stream")
-        return text
+        # M7 属性抽取放在落盘之后：解析失败只损失 attrs，不回滚上传。
+        # 注意小视频/音频（<50MB，常见）也走此路径：av_attrs 会把字节落临时文件喂 ffprobe
+        if content_type in ("image", "video", "audio"):
+            attrs = media_attrs.extract_attrs(content_type, data=data)
+        elif content_type in ("markdown", "docx"):
+            attrs = media_attrs.extract_attrs(content_type, text=text or "")
+        else:
+            attrs = {}
+        return text, attrs
+    attrs = {}
     with tempfile.SpooledTemporaryFile(max_size=64 * 1024 * 1024) as tmp:
         tmp.write(data)
         shutil.copyfileobj(file.file, tmp)
@@ -100,7 +112,23 @@ async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
         tmp.seek(0)
         storage.put_stream(zone, key, tmp, size,
                            file.content_type or "application/octet-stream")
-    return None
+        if content_type in ("video", "audio"):
+            # M7 大视频/音频：另落一个磁盘临时文件喂 ffprobe，
+            # 避免扰动 spool 游标，也避免整文件读入内存
+            tmp.seek(0)
+            with tempfile.NamedTemporaryFile(
+                    suffix=Path(file.filename or "media").suffix or ".bin") as probe:
+                shutil.copyfileobj(tmp, probe)
+                probe.flush()
+                attrs = media_attrs.extract_attrs(content_type, tmp_path=probe.name)
+        # 大图片（>50MB，罕见）跳过属性抽取：Pillow 需完整字节，避免整读内存
+    return None, attrs
+
+
+def _merge_attrs(asset: Asset, attrs: dict) -> None:
+    """M7：属性写入 meta.attrs（非空才写），与既有 meta 键合并保留。"""
+    if attrs:
+        asset.meta = {**(asset.meta or {}), "attrs": attrs}
 
 
 def get_asset_or_404(db: Session, asset_id: uuid.UUID) -> Asset:
@@ -137,10 +165,12 @@ async def create_asset(
     db.flush()
     key = f"{asset.id}/{file_name}"
     try:
-        asset.text_content = await store_upload(storage, zone, key, file, ct)
+        text, attrs = await store_upload(storage, zone, key, file, ct)
     except HTTPException:
         db.rollback()
         raise
+    asset.text_content = text
+    _merge_attrs(asset, attrs)
     asset.object_key = key
     db.commit()
     db.refresh(asset)
@@ -292,11 +322,13 @@ async def create_initial_draft(
     db.flush()
     key = f"{draft.id}/{file_name}"
     try:
-        draft.text_content = await store_upload(
+        text, attrs = await store_upload(
             storage, AssetZone.SOURCE, key, file, ct)
     except HTTPException:
         db.rollback()
         raise
+    draft.text_content = text
+    _merge_attrs(draft, attrs)
     draft.object_key = key
 
     db.add(Derivation(source_asset_id=topic.id, derived_asset_id=draft.id,
@@ -337,11 +369,13 @@ async def derive_from_master(
     db.flush()
     key = f"{pub.id}/{file_name}"
     try:
-        pub.text_content = await store_upload(
+        text, attrs = await store_upload(
             storage, AssetZone.PUBLISH, key, file, ct)
     except HTTPException:
         db.rollback()
         raise
+    pub.text_content = text
+    _merge_attrs(pub, attrs)  # meta 已含 platform，合并保留
     pub.object_key = key
 
     db.add(Derivation(source_asset_id=master.id, derived_asset_id=pub.id,
