@@ -70,11 +70,12 @@ def test_av_attrs_parses_canned_ffprobe_json(monkeypatch, tmp_path):
     video.write_bytes(b"\x00" * 16)
     monkeypatch.setattr(
         media_attrs.subprocess, "run", _fake_run(json.dumps(CANNED_VIDEO_FFPROBE)))
-    # video：第一个 codec_type=video 流给尺寸，codec_name 作 format，format.duration 转秒
+    # video：第一个 codec_type=video 流给尺寸，codec_name 作 format，
+    # format.duration 转秒输出为 duration_seconds（契约键名）
     assert av_attrs(str(video), "video") == {
-        "format": "h264", "width": 1920, "height": 1080, "duration": 12.5}
+        "format": "h264", "width": 1920, "height": 1080, "duration_seconds": 12.5}
     # audio：只取时长；bytes 入参走临时文件
-    assert av_attrs(b"fake-bytes", "audio") == {"duration": 12.5}
+    assert av_attrs(b"fake-bytes", "audio") == {"duration_seconds": 12.5}
 
 
 def test_av_attrs_ffprobe_failure_returns_none(monkeypatch):

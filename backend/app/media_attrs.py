@@ -33,8 +33,9 @@ def av_attrs(data_or_path, kind: str) -> dict | None:
     """音视频属性：ffprobe -print_format json（subprocess 单一接缝）。
 
     bytes 入参先落临时文件再探测；路径入参直接探测。
-    video → {format: codec_name, width, height, duration}；audio → {duration}
-    （时长取 format.duration，浮点秒）。ffprobe 缺失/非零退出/解析失败 → None。
+    video → {format: codec_name, width, height, duration_seconds}；
+    audio → {duration_seconds}（时长键名对齐 M7 契约，取 format.duration 浮点秒）。
+    ffprobe 缺失/非零退出/解析失败 → None；时长值非数字只丢时长键，不影响宽高。
     """
     tmp_path: str | None = None
     try:
@@ -55,7 +56,12 @@ def av_attrs(data_or_path, kind: str) -> dict | None:
             return None
         info = json.loads(proc.stdout)
         fmt = info.get("format") or {}
-        duration = (float(fmt["duration"]) if fmt.get("duration") else None)
+        # 时长单独转 float：非数字字符串只丢时长键，不拖垮整个 attrs（宽高保留）
+        raw_duration = fmt.get("duration")
+        duration: float | None = None
+        if raw_duration:
+            with contextlib.suppress(TypeError, ValueError):
+                duration = float(raw_duration)
         if kind == "video":
             stream = next(
                 (s for s in info.get("streams", [])
@@ -66,10 +72,10 @@ def av_attrs(data_or_path, kind: str) -> dict | None:
                      "width": stream.get("width"),
                      "height": stream.get("height")}
             if duration is not None:
-                attrs["duration"] = duration
+                attrs["duration_seconds"] = duration
             return attrs
         if kind == "audio":
-            return {"duration": duration} if duration is not None else None
+            return {"duration_seconds": duration} if duration is not None else None
         return None
     except Exception:  # noqa: BLE001 - ffprobe 缺失/超时/JSON 损坏均不阻塞上传
         return None
@@ -80,7 +86,8 @@ def av_attrs(data_or_path, kind: str) -> dict | None:
 
 
 def text_attrs(text: str) -> dict:
-    """文本属性：word_count=非空白字符数；语言按非空白字符占比判定——
+    """文本属性：word_count=非空白字符数（中文=字数，英文=字符数非词数）；
+    语言按非空白字符占比判定——
 
     CJK ≥30% → zh；ascii 字母 ≥60% → en；否则 mixed；空文本 → other。
     """

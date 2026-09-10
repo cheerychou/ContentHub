@@ -229,7 +229,7 @@ def test_upload_large_video_spool_path_extracts_attrs(client, monkeypatch):
     )
     assert resp.status_code == 201
     assert resp.json()["meta"]["attrs"] == {
-        "format": "h264", "width": 1920, "height": 1080, "duration": 12.5}
+        "format": "h264", "width": 1920, "height": 1080, "duration_seconds": 12.5}
 
 
 def test_upload_small_video_memory_path_extracts_attrs(client, monkeypatch):
@@ -250,4 +250,4 @@ def test_upload_small_video_memory_path_extracts_attrs(client, monkeypatch):
     )
     assert resp.status_code == 201
     assert resp.json()["meta"]["attrs"] == {
-        "format": "h264", "width": 320, "height": 240, "duration": 1.0}
+        "format": "h264", "width": 320, "height": 240, "duration_seconds": 1.0}

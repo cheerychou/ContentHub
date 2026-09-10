@@ -114,13 +114,18 @@ async def store_upload(storage, zone: AssetZone, key: str, file: UploadFile,
                            file.content_type or "application/octet-stream")
         if content_type in ("video", "audio"):
             # M7 大视频/音频：另落一个磁盘临时文件喂 ffprobe，
-            # 避免扰动 spool 游标，也避免整文件读入内存
+            # 避免扰动 spool 游标，也避免整文件读入内存。
+            # probe 副本会再占一份磁盘（磁盘满/IO 失败时 copyfileobj 抛 OSError），
+            # 与抽取失败同级隔离：只损失 attrs，绝不影响上传结果。
             tmp.seek(0)
-            with tempfile.NamedTemporaryFile(
-                    suffix=Path(file.filename or "media").suffix or ".bin") as probe:
-                shutil.copyfileobj(tmp, probe)
-                probe.flush()
-                attrs = media_attrs.extract_attrs(content_type, tmp_path=probe.name)
+            try:
+                with tempfile.NamedTemporaryFile(
+                        suffix=Path(file.filename or "media").suffix or ".bin") as probe:
+                    shutil.copyfileobj(tmp, probe)
+                    probe.flush()
+                    attrs = media_attrs.extract_attrs(content_type, tmp_path=probe.name)
+            except Exception:  # noqa: BLE001 - probe 副本失败（如磁盘满）只损失 attrs
+                attrs = {}
         # 大图片（>50MB，罕见）跳过属性抽取：Pillow 需完整字节，避免整读内存
     return None, attrs
 
