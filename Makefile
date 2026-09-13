@@ -8,10 +8,11 @@ dev:            ## 启动开发依赖（postgres + minio）
 test:           ## 运行后端测试（需先 make dev）
 	cd backend && .venv/bin/pytest -v
 
-preflight:      ## 本地质量门禁（无 CI 红线下的替代闸）：文档规范 + 全部测试 + 迁移可升级
+preflight:      ## 本地质量门禁（无 CI 红线下的替代闸）：文档规范 + 全部测试 + 迁移可升级 + FE 测试
 	python3 scripts/docstd --docs ./docs check
 	cd backend && .venv/bin/pytest -q
 	cd backend && .venv/bin/alembic upgrade head
+	cd frontend && npm test
 
 cleanup-orphans: ## 对象存储孤儿清理：默认 dry-run；make cleanup-orphans FILTER=--delete 真删
 	cd backend && .venv/bin/python -m scripts.cleanup_orphans $(FILTER)
