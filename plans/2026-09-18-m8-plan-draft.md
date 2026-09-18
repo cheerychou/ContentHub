@@ -6,7 +6,7 @@
 
 | 候补 | 完成记录 |
 |---|---|
-| 暗色 FOUC 修复 | b183cea（index.html 内联脚本） |
+| 暗色 FOUC 修复 | adfbe94（index.html 内联脚本） |
 | FE 测试 runner + preflight 四步门禁 | b183cea（vitest，23 测试） |
 | topbar localStorage 防抛 / engines 声明 / 短 ID 键盘可达 / tsconfig 覆盖 | 2026-09-18 卫生打包（本分支） |
 | 列表列结构（编号列+操作列） | 52842b0 |
