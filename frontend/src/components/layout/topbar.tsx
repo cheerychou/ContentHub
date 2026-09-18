@@ -19,10 +19,21 @@ export interface TopBarProps {
  */
 export function TopBar({ title, className }: TopBarProps) {
   // 暗色：初始读 localStorage，切换写 <html>.classList + 记忆
-  const [dark, setDark] = useState(() => localStorage.getItem(THEME_KEY) === "dark");
+  // localStorage 可能在隐私模式/禁用存储下抛异常：读失败视为浅色，写失败跳过记忆
+  const [dark, setDark] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_KEY) === "dark";
+    } catch {
+      return false;
+    }
+  });
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+    try {
+      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+    } catch {
+      // 写失败静默跳过（不影响本次会话内的主题切换）
+    }
   }, [dark]);
 
   // 健康点：仅挂载时探测一次；失败静默显示离线（内部工具，不做重试）

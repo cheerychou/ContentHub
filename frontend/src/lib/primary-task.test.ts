@@ -59,6 +59,12 @@ describe("primaryTask", () => {
       ).toBe("master_image_drafting");
     });
 
+    it("图片 topic（同 drafting 档）→ 渲染封面", () => {
+      expect(
+        primaryTask(mkDetail({ zone: "master", content_type: "image", status: "topic" })),
+      ).toBe("master_image_drafting");
+    });
+
     it("图片 finalized → 渲染封面", () => {
       expect(
         primaryTask(mkDetail({ zone: "master", content_type: "image", status: "finalized" })),
@@ -83,6 +89,12 @@ describe("primaryTask", () => {
       expect(
         primaryTask(mkDetail({ zone: "publish", status: "published" })),
       ).toBeNull();
+    });
+
+    it("markdown 非 published 态（类型联合合法者 finalized）→ 仍给语音包任务", () => {
+      expect(
+        primaryTask(mkDetail({ zone: "publish", status: "finalized" })),
+      ).toBe("publish_markdown");
     });
 
     it("video_kit 且有文件 → 语音包装配任务", () => {

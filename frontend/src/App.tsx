@@ -436,13 +436,14 @@ function Assets({ stageZone }: { stageZone: Zone }) {
       key: "id", title: "编号", width: "w-28",
       render: (a) => (
         <div className="min-w-0">
-          <p
+          <button
+            type="button"
             className="font-mono text-sm cursor-pointer hover:text-primary transition-colors"
             title="点击复制完整编号"
             onClick={(e) => { e.stopPropagation(); void copyAssetId(a.id); }}
           >
             {a.id.slice(0, 8)}
-          </p>
+          </button>
           <p className="text-xs text-muted-foreground">{a.updated_at.slice(0, 10)}</p>
         </div>
       ),
