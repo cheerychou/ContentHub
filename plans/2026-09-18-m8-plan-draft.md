@@ -1,6 +1,7 @@
-# M8 计划草稿（v0.1，2026-09-18）
+# M8 计划草稿（v0.2，2026-09-19）
 
 > **状态：草稿。** 候补池与依赖标注已定，**优先级与取舍待 M3–M7 验收反馈定稿**；反馈到后从中选 1–2 个主菜写成正式实施计划（含 Task 分解），未选中的滚入 M9。
+> v0.2：并入 ChatCut/video-use 调研结论——新增候补 6（口播净化）、M9 候选预埋、M10 补充与调研备忘（见文末）。
 
 ## 已完成的候补（销项）
 
@@ -37,8 +38,28 @@
 - ffprobe/抽取同步阻塞事件循环 → 异步化
 - attrs 删除语义（null 清除）
 - 大视频回填内存
-- 孤儿清理执行（运维件，等用户对 442 个 dry-run 清单拍板）
+- ~~孤儿清理执行~~（已完结 2026-09-19：520 个实删归零）
+
+### 候补 6：口播净化语音包（体量 S–M）【2026-09-19 新增，ChatCut 调研产出】
+- **范围**：语音包配方增量——基于既有对齐的音频+SRT，ffmpeg silencedetect + 词级时间戳，产出净化版音频 + 重对齐 SRT + 剪口清单三件套
+- **依赖**：无硬依赖；词级转录 provider 抽缝（见 M9 预埋）可后置
+- **风险**：低；ChatCut/video-use 共同验证的核心卖点（去气口/静音/口误），需求已被市场验证
+
+## M9 候选预埋【2026-09-19 新增，ChatCut/video-use 调研产出】
+
+- **ContentHub MCP server + agent 接入（体量 M，建议主菜）**：后端 API 的 MCP 封装（资产查询/状态机流转/配方派生/发布登记），配 agent-readable 接入文档页（学 chatcut.io/claude 模式）；MCP 工具管操作 + Skill 文档管领域流程（选题状态机合法流转、配方适用条件）。价值：用户在 ZCode/Claude Code 里对话式操作 ContentHub，与既有 agent 工作流同构；与 Web 自托管定位不冲突。参照：ChatCut-Inc/agent-plugin、0xsline/OpenChatCut。
+- **粗剪时间线产物（调研项，体量 M–L）**：新产物类型"粗剪单"——结构化时间线 JSON/EDL（保留段/删除段/顺序+时间码），渲染交剪映人工或 ffmpeg/Remotion 批处理；前提=音视频资产词级转录资产化；**尊重 KNW L-007**：不逆向剪映草稿，只做开放 schema。参照：browser-use/video-use 的 EDL 架构（转录→12KB 文本视图→LLM 推理→EDL→渲染→自评）。
+- **产物多版本并排（体量 S）**：同一发布物的多版本（同配方不同参数）并存+切换（ChatCut V1–V4 模式）；与深链路由同期考虑产物模型。
+- **模型 provider 接缝（设计原则，非独立项）**：转写/TTS/生成抽 provider 接缝不写死供应商；粗剪/净化立项时的设计前提。
+
+## M10 多人化族补充
+
+- **AI 成本可见性**：按项目的模型调用/渲染成本计量与展示（ChatCut credits 的自托管对应物）。
+
+## ChatCut 调研结论备忘（2026-09-19）
+
+一句话：对话式粗剪品类已被市场验证（$25–160/月 credits 订阅、闭源云端 SaaS），ContentHub **借鉴机制与产品形态，不做云端 NLE**。六模式：①一套能力三入口、人机同席位 ②agent-readable 分发 ③MCP+Skill 双机制 ④产物多版本（V1–V4）⑤模型供应链包装 ⑥credits=成本可见性。不借鉴：多轨 Web NLE、动效模板商店、云端渲染计费。源：chatcut.io、chatcut.io/claude、ChatCut-Inc/agent-plugin、browser-use/video-use（MIT）、0xsline/OpenChatCut、francize/codex-chatcut。
 
 ## 定稿规则
 
-验收反馈到达时按三问定稿：①反馈里哪些问题候补能解？②主菜选 1–2 个（建议一个 L/M + 一个 S 搭配）；③未选中项滚入 M9 并更新本文件销项表。
+验收反馈到达时按三问定稿：①反馈里哪些问题候补能解？②主菜选 1–2 个（建议一个 L/M + 一个 S 搭配；M9 主菜建议从预埋池选，MCP server 为默认推荐）；③未选中项滚入 M9 并更新本文件销项表。
