@@ -15,3 +15,4 @@
 ## 索引
 
 - [KNW-EXP-001 内容生产自动化经验册](KNW-EXP-001-content-supply-chain-lessons.md) — VidFlow 等项目蒸馏：字幕断句、LLM 创意决策、发布资质壁垒、封面排版、交付形态六条教训
+- [KNW-EXP-002 工具链配置漂移与静默失败教训册（DSH）](KNW-EXP-002-dsh-config-drift-silent-session-failure.md) — 工具版本升级致默认配置漂移、客户端静默失败、取证纪律三条教训
