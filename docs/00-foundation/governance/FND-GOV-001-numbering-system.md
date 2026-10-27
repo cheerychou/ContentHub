@@ -4,11 +4,11 @@ title: "ContentHub 文档治理规范"
 category: FND
 domain: GOV
 status: active
-version: 2.0
+version: 2.1
 doc_type: governance
 author: "zhoudabo"
 created_at: "2026-09-03"
-updated_at: "2026-09-04"
+updated_at: "2026-10-27"
 tags: [governance, numbering, lifecycle, documentation]
 related: [FND-TMP-001]
 ---
@@ -47,7 +47,7 @@ related: [FND-TMP-001]
 | EA | 架构设计 | `architecture/` | 按架构视角逐步补充 |
 | PRD | 产品需求 | `product/` | 按产品模块，业务定型后确定 |
 | ENG | 工程技术 | `engineering/` | DEV（开发指南）/ COMP（组件） |
-| QA | 质量测试 | `quality/` | TST（测试） |
+| QA | 质量测试 | `quality/` | TST（测试）/ REV（审查） |
 | OPS | 运维部署 | `deployment/` | DEP（部署）/ MON（监控） |
 | KNW | 知识经验 | `knowledge/` | EXP（经验教训册） |
 
@@ -107,3 +107,4 @@ python3 scripts/docstd --docs ./docs index    # 重建 docs/00-foundation/id-map
 | 1.0 | 2026-09-03 | 随仓库初始化引入（源自早期项目治理框架） | zhoudabo |
 | 1.1 | 2026-09-04 | 项目名更正 ContectHub → ContentHub | zhoudabo |
 | 2.0 | 2026-09-04 | 激进裁剪：合并原 GOV-002/003 为本文档，删除归档目录与 archived 状态，状态机收敛为 draft/active/deprecated，对齐单人维护现状 | zhoudabo |
+| 2.1 | 2026-10-27 | QA 领域词表新增 REV（审查）；首批审查报告以 QA-REV-001/002 收录入治理 | zhoudabo |

@@ -2,8 +2,8 @@
 title: "ContentHub 文档中心"
 category: index
 status: active
-version: 1.3
-updated_at: "2026-09-05"
+version: 1.4
+updated_at: "2026-10-27"
 ---
 
 # ContentHub 文档中心
@@ -33,6 +33,13 @@ updated_at: "2026-09-05"
 | 文档 | 说明 |
 |------|------|
 | [MVP建设方案](product/PRD-MVP-001-mvp-build-plan.md) | v2.0 定位定稿重写：模板与提示词派生引擎优先，Web 自托管（M0-M2） |
+
+### ✅ 质量测试 `quality/`
+
+| 文档 | 说明 |
+|------|------|
+| [代码仓审查报告](quality/QA-REV-001-code-review-report.md) | 全仓审查（2026-09-24）：M0–M7 落地核实与工程化边界问题清单 |
+| [后端代码质量与架构审查附页](quality/QA-REV-002-backend-review-appendix.md) | 后端逐模块审查附页：分层/事务/渲染管线等可执行改法 |
 
 ### 🧠 知识经验 `knowledge/`
 

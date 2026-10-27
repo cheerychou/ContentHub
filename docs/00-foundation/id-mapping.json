@@ -7,13 +7,23 @@
     "specification": "FND-GOV-001"
   },
   "_counters": {
+    "EA-ARC": 1,
     "FND-GOV": 1,
     "FND-TMP": 1,
     "KNW-EXP": 2,
     "PRD-MVP": 1,
+    "QA-REV": 2,
     "STR-BV": 1
   },
   "documents": [
+    {
+      "doc_id": "EA-ARC-001",
+      "title": "Dify 工作流引擎源码研读设计笔记",
+      "category": "EA",
+      "domain": "ARC",
+      "status": "draft",
+      "path": "architecture/EA-ARC-001-dify-workflow-study-notes.md"
+    },
     {
       "doc_id": "FND-GOV-001",
       "title": "ContentHub 文档治理规范",
@@ -53,6 +63,22 @@
       "domain": "MVP",
       "status": "active",
       "path": "product/PRD-MVP-001-mvp-build-plan.md"
+    },
+    {
+      "doc_id": "QA-REV-001",
+      "title": "ContentHub 代码仓审查报告",
+      "category": "QA",
+      "domain": "REV",
+      "status": "active",
+      "path": "quality/QA-REV-001-code-review-report.md"
+    },
+    {
+      "doc_id": "QA-REV-002",
+      "title": "ContentHub 后端代码质量与架构审查附页",
+      "category": "QA",
+      "domain": "REV",
+      "status": "active",
+      "path": "quality/QA-REV-002-backend-review-appendix.md"
     },
     {
       "doc_id": "STR-BV-001",
