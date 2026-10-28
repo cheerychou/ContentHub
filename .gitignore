@@ -59,3 +59,4 @@ dist/
 # 环境与本地输出
 backend/.env
 backend/dup-report.json
+.superpowers/
