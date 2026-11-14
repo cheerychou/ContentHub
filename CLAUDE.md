@@ -38,3 +38,14 @@
 - 本仓库**不上传任何 GitHub Actions / CI/CD 门禁**，推送不会因文档/CI 被阻断，也不消耗云端算力。
 - 已装**本地** pre-commit hook：仅在你 `git commit` 时对 `docs/*.md` 做命名/元数据检查（本地零成本，可随意改、不会推送到远端）。
 - 若本地 hook 偶觉多余，可随时 `git config --unset core.hooksPath` 关闭。
+
+## 个人智能体团队接线（引用式——唯一权威在约定库）
+
+本项目已接入周全的个人智能体团队。**会话默认承担调度长职责**。规则唯一权威在约定库，本文件不复制规则正文（引用式，防副本漂移，策划书 v1.3 §2.4）：
+
+1. 先读规则正本：`~/应用开发/agent-team/templates/agents-wiring.md`
+2. 任务卡模板与在途任务：`~/应用开发/agent-team/cards/` 与 `templates/task-card.md`
+3. 审批/额度细则：`agent-team/rules/approval.md`、`rules/quota.md`
+4. 绑定权威：`agent-team/docs/00-总体策划书.md`（v1.3）
+5. 进场第一步：执行 `~/应用开发/agent-team/scripts/situation-report.sh` 建立态势（调度长第 0 职责）
+
