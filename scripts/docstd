@@ -5,7 +5,7 @@ docstd —— 文档编号规范 CLI（无第三方依赖）
 
 子命令：
   init    交互式/参数化初始化项目文档规范（需完整 doc-standard 包的 templates/）
-  check   命名正则 + frontmatter 完整性 + doc_id↔文件名一致性校验
+  check   命名正则 + frontmatter 完整性 + doc_id↔文件名一致性校验 + 团队接线守卫
   index   扫描合规 .md，重建 docs/00-foundation/id-mapping.json
   next    查某领域（CAT-DOM）下一个可用序号
   new     分配编号 + 生成 frontmatter 骨架 + 更新索引
@@ -128,6 +128,56 @@ def gather_files(paths, docs):
     return files
 
 
+# ---------- 接线守卫（约定库 rules/repo-docs-norm.md §2.5，T-20261120-03） ----------
+WIRING_TERM_RE = re.compile(r"个人智能体团队|agents-wiring")
+WIRING_HEADING_RE = re.compile(r"^#{1,6}[^\n]*(个人智能体团队接线|agents-wiring)[^\n]*$", re.M)
+WIRING_VERSION_RE = re.compile(r"策划书[^。\n]{0,40}v\d+\.\d+")
+WIRING_POINTER_RE = re.compile(r"([~][^\s`）)]*agents-wiring\.md)")
+
+
+def check_wiring(repo_root: Path):
+    """仓库根 AGENTS.md/CLAUDE.md 团队接线守卫。
+
+    信号：文件含「个人智能体团队」或 agents-wiring 即视为已接入；正文顺带提及
+    而无接线段的文件同样判红（有意设计——提到团队就应有接线段；全工作区
+    12 项目实测无误伤，2026-11-21）。
+    红：已接入信号但缺接线段标题；接线段无 agents-wiring.md 正本指针；正本路径不可达。
+    黄：接线段写死策划书版本号（升版漂移源，提示收敛 2 行式；存量 5 行式兼容不改退出码）。
+    无接线信号的文件静默跳过（未接入项目不受扰）。返回 (reds, yellows, has_signal)。
+    """
+    reds, yellows = [], []
+    has_signal = False
+    for fname in ("AGENTS.md", "CLAUDE.md"):
+        f = repo_root / fname
+        if not f.exists():
+            continue
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        text = re.sub(r"```.*?```", "", text, flags=re.S)  # 剥离代码围栏，防示例行误判
+        if not WIRING_TERM_RE.search(text):
+            continue
+        has_signal = True
+        m = WIRING_HEADING_RE.search(text)
+        if not m:
+            reds.append(f"{fname}: 检测到接线信号但缺「个人智能体团队接线」段（rules/repo-docs-norm.md §2.3）")
+            continue
+        level = len(m.group(0)) - len(m.group(0).lstrip("#"))  # 段止于同级或更高级标题
+        nxt = re.search(rf"^#{{1,{level}}}\s", text[m.end():], re.M)
+        seg = text[m.end(): m.end() + nxt.start()] if nxt else text[m.end():]
+        pm = WIRING_POINTER_RE.search(seg)
+        if not pm:
+            reds.append(f"{fname}: 接线段缺 agents-wiring.md 正本指针")
+            continue
+        if not Path(pm.group(1)).expanduser().exists():
+            reds.append(f"{fname}: 正本路径不可达：{pm.group(1)}")
+            continue
+        if WIRING_VERSION_RE.search(seg):
+            yellows.append(f"{fname}: 接线段写死策划书版本号（升版漂移源；规范建议收敛 2 行式）")
+    return reds, yellows, has_signal
+
+
 # ---------- 子命令 ----------
 def cmd_check(args):
     root = locate_docs(args.docs)
@@ -168,12 +218,23 @@ def cmd_check(args):
             passed += 1
     if checked == 0:
         print(f"{YELLOW}（没有需要检查的文档）{NC}")
-        return 0
-    if passed == checked:
+    elif passed == checked:
         print(f"{GREEN}✅ {passed}/{checked} 通过{NC}")
-        return 0
-    print(f"{RED}⚠️  {passed}/{checked} 通过，见上方问题{NC}")
-    return 1
+    else:
+        print(f"{RED}⚠️  {passed}/{checked} 通过，见上方问题{NC}")
+    # 团队接线守卫（仅默认全仓校验时执行；显式 paths 视为单文件校验跳过）
+    wiring_reds, wiring_yellows = [], []
+    if not args.paths:
+        wiring_reds, wiring_yellows, wiring_signal = check_wiring(root.parent)
+        if wiring_reds or wiring_yellows:
+            print("🔗 接线守卫（rules/repo-docs-norm.md §2.5）：")
+            for r in wiring_reds:
+                print(f"{RED}   ❌ {r}{NC}")
+            for y in wiring_yellows:
+                print(f"{YELLOW}   ⚠️ {y}{NC}")
+        elif wiring_signal:
+            print(f"{GREEN}🔗 接线守卫：AGENTS/CLAUDE ✅{NC}")
+    return 1 if wiring_reds else (0 if checked == 0 or passed == checked else 1)
 
 
 def cmd_index(args):
