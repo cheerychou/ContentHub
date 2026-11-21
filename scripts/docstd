@@ -170,7 +170,9 @@ def check_wiring(repo_root: Path):
         if not pm:
             reds.append(f"{fname}: 接线段缺 agents-wiring.md 正本指针")
             continue
-        if not Path(pm.group(1)).expanduser().exists():
+        if not Path(pm.group(1)).expanduser().exists() and Path("~/应用开发/agent-team").expanduser().exists():
+            # 约定库锚点在地（~/应用开发/agent-team 存在）时正本缺失才是真漂移；
+            # CI/陌生机器上锚点不存在，跳过可达性校验（指针形式已验证，不误红）
             reds.append(f"{fname}: 正本路径不可达：{pm.group(1)}")
             continue
         if WIRING_VERSION_RE.search(seg):
